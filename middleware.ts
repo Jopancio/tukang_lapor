@@ -37,6 +37,15 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/dashboard') || pathname.startsWith('/admin')
   const isAuthPage = pathname === '/login' || pathname === '/signup'
 
+  const isGuest = user?.user_metadata?.role === 'Guest'
+
+  // Guests cannot access the worker dashboard
+  if (pathname.startsWith('/dashboard') && isGuest) {
+    const redirectUrl = request.nextUrl.clone()
+    redirectUrl.pathname = '/lapor'
+    return NextResponse.redirect(redirectUrl)
+  }
+
   if (isProtected && !user) {
     const redirectUrl = request.nextUrl.clone()
     redirectUrl.pathname = '/login'
@@ -47,7 +56,13 @@ export async function middleware(request: NextRequest) {
 
   if (isAuthPage && user) {
     const redirectUrl = request.nextUrl.clone()
-    redirectUrl.pathname = user.email === ADMIN_EMAIL ? '/admin' : '/dashboard'
+    if (user.email === ADMIN_EMAIL) {
+      redirectUrl.pathname = '/admin'
+    } else if (isGuest) {
+      redirectUrl.pathname = '/lapor'
+    } else {
+      redirectUrl.pathname = '/dashboard'
+    }
     return NextResponse.redirect(redirectUrl)
   }
 

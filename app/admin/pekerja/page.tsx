@@ -433,7 +433,7 @@ function AddWorkerModal({ onClose, onSuccess }: { onClose: () => void; onSuccess
           { label: "Nama Lengkap",  key: "name",     type: "text",     placeholder: "Contoh: Pak Joko" },
           { label: "Area Tugas",    key: "area",     type: "text",     placeholder: "Contoh: Gedung A — Lt.1" },
           { label: "No. Telepon",   key: "phone",    type: "tel",      placeholder: "0812-xxxx-xxxx" },
-          { label: "Email (Login)", key: "email",    type: "email",    placeholder: "email@cleanpoint.id" },
+          { label: "Email (Login)", key: "email",    type: "email",    placeholder: "email@tukanglap.id" },
           { label: "Password",      key: "password", type: "password", placeholder: "Minimal 6 karakter" },
         ].map(({ label, key, type, placeholder }) => (
           <div key={key} className="flex flex-col gap-1.5">

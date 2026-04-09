@@ -12,6 +12,12 @@ import {
   RefreshCw,
   X,
   AlertTriangle,
+  Inbox,
+  MapPin,
+  Tag,
+  EyeOff,
+  CheckCheck,
+  ChevronRight,
 } from "lucide-react";
 import DashboardSidebar from "@/components/DashboardSidebar";
 import { createClient } from "@/lib/supabase/client";
@@ -29,7 +35,39 @@ interface Task {
   created_at: string;
 }
 
+interface Laporan {
+  id: string;
+  reporter_name: string;
+  lokasi: string;
+  kategori: string;
+  deskripsi: string;
+  urgency: string;
+  foto_url: string | null;
+  status: string;
+  created_at: string;
+}
+
 /* ─── HELPERS ───────────────────────────────────────────────── */
+
+const KATEGORI_LABEL: Record<string, string> = {
+  kebersihan_kelas:    "Kebersihan Kelas",
+  kebersihan_toilet:   "Kebersihan Toilet",
+  kebersihan_koridor:  "Kebersihan Koridor",
+  kebersihan_kantin:   "Kebersihan Kantin",
+  kebersihan_halaman:  "Kebersihan Halaman",
+  kerusakan_fasilitas: "Kerusakan Fasilitas",
+  sampah_menumpuk:     "Sampah Menumpuk",
+  kebersihan:          "Kebersihan",
+  kerusakan:           "Kerusakan",
+  keamanan:            "Keamanan",
+  lainnya:             "Lainnya",
+};
+
+const URGENCY_STYLE: Record<string, { bg: string; color: string; border: string; emoji: string }> = {
+  darurat: { bg: "#FEF2F2", color: "#EF4444", border: "#FECACA", emoji: "🔴" },
+  segera: { bg: "#FFF7ED", color: "#F97316", border: "#FED7AA", emoji: "🟡" },
+  normal: { bg: "#F0FDF4", color: "#16A34A", border: "#BBF7D0", emoji: "🟢" },
+};
 
 function timeAgo(dateStr: string) {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -69,6 +107,32 @@ export default function DashboardBapaPrakarya() {
   const [error, setError] = useState<string | null>(null);
   const [notifications, setNotifications] = useState<Task[]>([]);
   const [showNotif, setShowNotif] = useState(false);
+  const [laporan, setLaporan] = useState<Laporan[]>([]);
+  const [laporanLoading, setLaporanLoading] = useState(true);
+  const [selectedLaporan, setSelectedLaporan] = useState<Laporan | null>(null);
+  const [claimingId, setClaimingId] = useState<string | null>(null);
+  const [dismissedIds, setDismissedIds] = useState<Set<string>>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem("dismissed_laporan");
+        return saved ? new Set(JSON.parse(saved)) : new Set();
+      } catch {
+        return new Set();
+      }
+    }
+    return new Set();
+  });
+  const [claimedIds, setClaimedIds] = useState<Set<string>>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem("claimed_laporan");
+        return saved ? new Set(JSON.parse(saved)) : new Set();
+      } catch {
+        return new Set();
+      }
+    }
+    return new Set();
+  });
   const supabaseRef = useRef(createClient());
 
   const fetchTasks = useCallback(async () => {
@@ -85,9 +149,92 @@ export default function DashboardBapaPrakarya() {
     }
   }, []);
 
+  const fetchLaporan = useCallback(async () => {
+    try {
+      setLaporanLoading(true);
+      const res = await fetch("/api/tasks/laporan");
+      if (!res.ok) return;
+      const data = await res.json();
+      setLaporan(data.laporan ?? []);
+    } catch {
+      // silent — laporan section stays empty
+    } finally {
+      setLaporanLoading(false);
+    }
+  }, []);
+
+  const handleClaim = useCallback(async (id: string) => {
+    setClaimingId(id);
+    try {
+      const res = await fetch("/api/tasks/laporan", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, status: "diproses" }),
+      });
+      if (!res.ok) throw new Error();
+      setLaporan((prev) =>
+        prev.map((l) => (l.id === id ? { ...l, status: "diproses" } : l))
+      );
+      setSelectedLaporan((prev) =>
+        prev?.id === id ? { ...prev, status: "diproses" } : prev
+      );
+      // Track as claimed by this worker so it shows in Tugas Aktif
+      setClaimedIds((prev) => {
+        const next = new Set(prev);
+        next.add(id);
+        try { localStorage.setItem("claimed_laporan", JSON.stringify([...next])); } catch { /* ignore */ }
+        return next;
+      });
+    } catch {
+      alert("Gagal mengklaim laporan. Coba lagi.");
+    } finally {
+      setClaimingId(null);
+    }
+  }, []);
+
+  const [completingLaporanId, setCompletingLaporanId] = useState<string | null>(null);
+
+  const handleCompleteLaporan = useCallback(async (id: string) => {
+    setCompletingLaporanId(id);
+    try {
+      const res = await fetch("/api/tasks/laporan", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, status: "selesai" }),
+      });
+      if (!res.ok) throw new Error();
+      // Remove from laporan list and claimedIds
+      setLaporan((prev) => prev.filter((l) => l.id !== id));
+      setClaimedIds((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        try { localStorage.setItem("claimed_laporan", JSON.stringify([...next])); } catch { /* ignore */ }
+        return next;
+      });
+      setSelectedLaporan((prev) => (prev?.id === id ? null : prev));
+    } catch {
+      alert("Gagal menandai laporan selesai. Coba lagi.");
+    } finally {
+      setCompletingLaporanId(null);
+    }
+  }, []);
+
+  const handleDismiss = useCallback((id: string) => {
+    setDismissedIds((prev) => {
+      const next = new Set(prev);
+      next.add(id);
+      try {
+        localStorage.setItem("dismissed_laporan", JSON.stringify([...next]));
+      } catch { /* ignore */ }
+      return next;
+    });
+    setSelectedLaporan((prev) => (prev?.id === id ? null : prev));
+  }, []);
+
   useEffect(() => {
     fetchTasks();
-  }, [fetchTasks]);
+    fetchLaporan();
+  }, [fetchTasks, fetchLaporan]);
 
   // Realtime subscription
   useEffect(() => {
@@ -131,12 +278,38 @@ export default function DashboardBapaPrakarya() {
       )
       .subscribe();
 
+    const laporanChannel = supabase
+      .channel("laporan-realtime")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "laporan" },
+        (payload) => {
+          const newLaporan = payload.new as Laporan;
+          setLaporan((prev) => [newLaporan, ...prev]);
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "laporan" },
+        (payload) => {
+          const updated = payload.new as Laporan;
+          // Remove from view once admin marks it selesai
+          if (updated.status === "selesai") {
+            setLaporan((prev) => prev.filter((l) => l.id !== updated.id));
+          } else {
+            setLaporan((prev) => prev.map((l) => (l.id === updated.id ? updated : l)));
+          }
+        }
+      )
+      .subscribe();
+
     if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "default") {
       Notification.requestPermission();
     }
 
     return () => {
       supabase.removeChannel(channel);
+      supabase.removeChannel(laporanChannel);
     };
   }, []);
 
@@ -172,6 +345,10 @@ export default function DashboardBapaPrakarya() {
   const doneTasks = tasks.filter((t) => t.status === "done");
   const allActive = [...pendingTasks, ...activeTasks].sort(
     (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+  );
+  // Claimed laporan that are still open (diproses) — show in Tugas Aktif
+  const claimedLaporan = laporan.filter(
+    (l) => claimedIds.has(l.id) && l.status === "diproses"
   );
 
   return (
@@ -435,6 +612,225 @@ export default function DashboardBapaPrakarya() {
 
           {!loading && !error && (
             <>
+              {/* LAPORAN MASUK */}
+              <div className="flex flex-col gap-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Inbox size={18} color="#3B82F6" />
+                    <span
+                      style={{
+                        fontFamily: "var(--font-space-grotesk)",
+                        fontSize: 15,
+                        fontWeight: 700,
+                        color: "#111827",
+                      }}
+                    >
+                      Laporan Masuk
+                    </span>
+                  </div>
+                  {laporan.length > 0 && (
+                    <span
+                      className="rounded-xl"
+                      style={{
+                        background: "#EFF6FF",
+                        padding: "4px 10px",
+                        fontFamily: "var(--font-inter)",
+                        fontSize: 11,
+                        fontWeight: 600,
+                        color: "#3B82F6",
+                      }}
+                    >
+                      {laporan.length} Laporan
+                    </span>
+                  )}
+                </div>
+
+                {laporanLoading ? (
+                  <div
+                    className="flex items-center justify-center gap-2 rounded-xl py-8"
+                    style={{ background: "#FFFFFF", border: "1px solid #E5E7EB" }}
+                  >
+                    <Loader2 size={16} color="#3B82F6" className="animate-spin" />
+                    <span style={{ fontFamily: "var(--font-inter)", fontSize: 13, color: "#9CA3AF" }}>
+                      Memuat laporan...
+                    </span>
+                  </div>
+                ) : laporan.length === 0 ? (
+                  <div
+                    className="flex flex-col items-center justify-center py-10 rounded-xl"
+                    style={{ background: "#FFFFFF", border: "1px solid #E5E7EB" }}
+                  >
+                    <Inbox size={36} color="#D1D5DB" />
+                    <span
+                      style={{
+                        fontFamily: "var(--font-inter)",
+                        fontSize: 13,
+                        color: "#9CA3AF",
+                        marginTop: 10,
+                      }}
+                    >
+                      Tidak ada laporan masuk
+                    </span>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+                    {laporan.filter((l) => !dismissedIds.has(l.id)).map((item) => {
+                      const urg = URGENCY_STYLE[item.urgency] ?? URGENCY_STYLE.normal;
+                      const isClaiming = claimingId === item.id;
+                      const isClaimed = item.status === "diproses";
+                      return (
+                        <div
+                          key={item.id}
+                          className="rounded-xl overflow-hidden flex flex-col"
+                          style={{
+                            background: "#FFFFFF",
+                            border: `1.5px solid ${urg.border}`,
+                            boxShadow: "0 2px 8px #00000010",
+                            cursor: "pointer",
+                          }}
+                          onClick={() => setSelectedLaporan(item)}
+                        >
+                          <div style={{ height: 4, background: urg.color }} />
+                          <div className="flex flex-col gap-2" style={{ padding: "12px 14px", flex: 1 }}>
+                            {/* Urgency + time */}
+                            <div className="flex items-center justify-between">
+                              <span
+                                className="rounded-[20px]"
+                                style={{
+                                  background: urg.bg,
+                                  padding: "3px 8px",
+                                  fontFamily: "var(--font-inter)",
+                                  fontSize: 11,
+                                  fontWeight: 600,
+                                  color: urg.color,
+                                }}
+                              >
+                                {urg.emoji} {item.urgency.charAt(0).toUpperCase() + item.urgency.slice(1)}
+                              </span>
+                              <span style={{ fontFamily: "var(--font-inter)", fontSize: 10, color: "#9CA3AF" }}>
+                                {timeAgo(item.created_at)}
+                              </span>
+                            </div>
+
+                            {/* Reporter */}
+                            <div className="flex items-center justify-between">
+                              <span
+                                style={{
+                                  fontFamily: "var(--font-space-grotesk)",
+                                  fontSize: 14,
+                                  fontWeight: 700,
+                                  color: "#111827",
+                                }}
+                              >
+                                {item.reporter_name}
+                              </span>
+                              <ChevronRight size={14} color="#D1D5DB" />
+                            </div>
+
+                            {/* Category + Location */}
+                            <div className="flex items-center gap-1.5">
+                              <Tag size={12} color="#9CA3AF" />
+                              <span style={{ fontFamily: "var(--font-inter)", fontSize: 12, color: "#6B7280" }}>
+                                {KATEGORI_LABEL[item.kategori] ?? item.kategori}
+                              </span>
+                              <span style={{ color: "#D1D5DB", fontSize: 12 }}>·</span>
+                              <MapPin size={12} color="#9CA3AF" />
+                              <span
+                                style={{
+                                  fontFamily: "var(--font-inter)",
+                                  fontSize: 12,
+                                  color: "#6B7280",
+                                  overflow: "hidden",
+                                  textOverflow: "ellipsis",
+                                  whiteSpace: "nowrap",
+                                  maxWidth: 120,
+                                }}
+                              >
+                                {item.lokasi}
+                              </span>
+                            </div>
+
+                            {/* Description preview */}
+                            <p
+                              style={{
+                                fontFamily: "var(--font-inter)",
+                                fontSize: 12,
+                                color: "#374151",
+                                margin: 0,
+                                overflow: "hidden",
+                                display: "-webkit-box",
+                                WebkitLineClamp: 2,
+                                WebkitBoxOrient: "vertical",
+                              }}
+                            >
+                              {item.deskripsi}
+                            </p>
+                          </div>
+
+                          {/* Action buttons */}
+                          <div
+                            className="flex gap-2"
+                            style={{ padding: "0 14px 12px 14px" }}
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <button
+                              disabled={isClaiming || isClaimed}
+                              onClick={() => handleClaim(item.id)}
+                              className="flex items-center justify-center gap-1.5 rounded-lg flex-1"
+                              style={{
+                                padding: "8px 0",
+                                border: "none",
+                                cursor: isClaimed ? "default" : "pointer",
+                                background: isClaimed ? "#F0FDF4" : "#16A34A",
+                                opacity: isClaiming ? 0.7 : 1,
+                              }}
+                            >
+                              {isClaiming ? (
+                                <Loader2 size={13} color={isClaimed ? "#16A34A" : "#FFFFFF"} className="animate-spin" />
+                              ) : (
+                                <CheckCheck size={13} color={isClaimed ? "#16A34A" : "#FFFFFF"} />
+                              )}
+                              <span
+                                style={{
+                                  fontFamily: "var(--font-space-grotesk)",
+                                  fontSize: 12,
+                                  fontWeight: 600,
+                                  color: isClaimed ? "#16A34A" : "#FFFFFF",
+                                }}
+                              >
+                                {isClaimed ? "Diklaim" : "Klaim"}
+                              </span>
+                            </button>
+                            <button
+                              onClick={() => handleDismiss(item.id)}
+                              className="flex items-center justify-center gap-1.5 rounded-lg"
+                              style={{
+                                padding: "8px 12px",
+                                border: "1px solid #E5E7EB",
+                                cursor: "pointer",
+                                background: "#F9FAFB",
+                              }}
+                            >
+                              <EyeOff size={13} color="#9CA3AF" />
+                              <span
+                                style={{
+                                  fontFamily: "var(--font-space-grotesk)",
+                                  fontSize: 12,
+                                  fontWeight: 600,
+                                  color: "#9CA3AF",
+                                }}
+                              >
+                                Abaikan
+                              </span>
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
               {/* ACTIVE TASKS */}
               <div className="flex flex-col gap-4">
                 <div className="flex items-center justify-between">
@@ -448,7 +844,7 @@ export default function DashboardBapaPrakarya() {
                   >
                     Tugas Aktif
                   </span>
-                  {allActive.length > 0 && (
+                  {(allActive.length > 0 || claimedLaporan.length > 0) && (
                     <span
                       className="rounded-xl"
                       style={{
@@ -460,12 +856,12 @@ export default function DashboardBapaPrakarya() {
                         color: "#EF4444",
                       }}
                     >
-                      {allActive.length} Tugas
+                      {allActive.length + claimedLaporan.length} Tugas
                     </span>
                   )}
                 </div>
 
-                {allActive.length === 0 && (
+                {allActive.length === 0 && claimedLaporan.length === 0 && (
                   <div
                     className="flex flex-col items-center justify-center py-12 rounded-xl"
                     style={{ background: "#FFFFFF", border: "1px solid #E5E7EB" }}
@@ -624,6 +1020,149 @@ export default function DashboardBapaPrakarya() {
                     </div>
                   );
                 })}
+
+                {/* CLAIMED LAPORAN in Tugas Aktif */}
+                {claimedLaporan.map((item) => {
+                  const urg = URGENCY_STYLE[item.urgency] ?? URGENCY_STYLE.normal;
+                  const isCompleting = completingLaporanId === item.id;
+                  return (
+                    <div
+                      key={item.id}
+                      className="rounded-xl overflow-hidden"
+                      style={{
+                        background: "#FFFFFF",
+                        border: `1.5px solid ${urg.border}`,
+                        boxShadow: "0 2px 8px #00000010",
+                      }}
+                    >
+                      <div style={{ height: 4, background: urg.color }} />
+                      <div className="flex flex-col gap-2.5" style={{ padding: "14px 16px" }}>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span
+                              className="rounded-[20px]"
+                              style={{
+                                background: "#EFF6FF",
+                                padding: "3px 8px",
+                                fontFamily: "var(--font-inter)",
+                                fontSize: 11,
+                                fontWeight: 600,
+                                color: "#3B82F6",
+                              }}
+                            >
+                              📋 Laporan
+                            </span>
+                            <span
+                              className="rounded-[20px]"
+                              style={{
+                                background: urg.bg,
+                                padding: "3px 8px",
+                                fontFamily: "var(--font-inter)",
+                                fontSize: 11,
+                                fontWeight: 600,
+                                color: urg.color,
+                              }}
+                            >
+                              {urg.emoji} {item.urgency.charAt(0).toUpperCase() + item.urgency.slice(1)}
+                            </span>
+                          </div>
+                          <span
+                            className="flex items-center gap-1"
+                            style={{
+                              fontFamily: "var(--font-inter)",
+                              fontSize: 11,
+                              fontWeight: 500,
+                              color: "#9CA3AF",
+                            }}
+                          >
+                            <span
+                              className="rounded-full"
+                              style={{
+                                width: 6,
+                                height: 6,
+                                background: "#F97316",
+                                display: "inline-block",
+                              }}
+                            />
+                            Sedang Diproses
+                          </span>
+                        </div>
+
+                        <span
+                          style={{
+                            fontFamily: "var(--font-space-grotesk)",
+                            fontSize: 15,
+                            fontWeight: 700,
+                            color: "#111827",
+                          }}
+                        >
+                          {item.reporter_name}
+                        </span>
+
+                        <div className="flex items-center gap-3 flex-wrap">
+                          <div className="flex items-center gap-1.5">
+                            <Tag size={13} color="#9CA3AF" />
+                            <span style={{ fontFamily: "var(--font-inter)", fontSize: 12, color: "#6B7280" }}>
+                              {KATEGORI_LABEL[item.kategori] ?? item.kategori}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <MapPin size={13} color="#9CA3AF" />
+                            <span style={{ fontFamily: "var(--font-inter)", fontSize: 12, color: "#6B7280" }}>
+                              {item.lokasi}
+                            </span>
+                          </div>
+                        </div>
+
+                        <p
+                          style={{
+                            fontFamily: "var(--font-inter)",
+                            fontSize: 12,
+                            color: "#374151",
+                            margin: 0,
+                            overflow: "hidden",
+                            display: "-webkit-box",
+                            WebkitLineClamp: 2,
+                            WebkitBoxOrient: "vertical",
+                          }}
+                        >
+                          {item.deskripsi}
+                        </p>
+
+                        <button
+                          disabled={isCompleting}
+                          onClick={() => handleCompleteLaporan(item.id)}
+                          className="flex items-center justify-center gap-1.5 rounded-lg w-full"
+                          style={{
+                            background: "#16A34A",
+                            padding: "10px 0",
+                            border: "none",
+                            cursor: isCompleting ? "default" : "pointer",
+                            boxShadow: "0 3px 12px #16A34A40",
+                            opacity: isCompleting ? 0.7 : 1,
+                            marginTop: 2,
+                          }}
+                        >
+                          {isCompleting ? (
+                            <Loader2 size={15} color="#FFFFFF" className="animate-spin" />
+                          ) : (
+                            <CircleCheck size={15} color="#FFFFFF" />
+                          )}
+                          <span
+                            style={{
+                              fontFamily: "var(--font-space-grotesk)",
+                              fontSize: 13,
+                              fontWeight: 600,
+                              color: "#FFFFFF",
+                            }}
+                          >
+                            Tandai Selesai
+                          </span>
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
 
               {/* COMPLETED TASKS */}
@@ -699,6 +1238,229 @@ export default function DashboardBapaPrakarya() {
           )}
         </div>
       </main>
+
+      {/* LAPORAN DETAIL MODAL */}
+      {selectedLaporan && (() => {
+        const item = selectedLaporan;
+        const urg = URGENCY_STYLE[item.urgency] ?? URGENCY_STYLE.normal;
+        const isClaiming = claimingId === item.id;
+        const isClaimed = item.status === "diproses";
+        return (
+          <div
+            className="fixed inset-0 flex items-center justify-center"
+            style={{ background: "#00000050", zIndex: 100, padding: "20px 16px" }}
+            onClick={() => setSelectedLaporan(null)}
+          >
+            <div
+              className="flex flex-col rounded-2xl overflow-hidden w-full"
+              style={{
+                maxWidth: 520,
+                maxHeight: "90vh",
+                background: "#FFFFFF",
+                boxShadow: "0 24px 60px #00000030",
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Colored top bar */}
+              <div style={{ height: 6, background: urg.color, flexShrink: 0 }} />
+
+              {/* Header */}
+              <div
+                className="flex items-start justify-between"
+                style={{ padding: "16px 20px 12px", borderBottom: "1px solid #F3F4F6", flexShrink: 0 }}
+              >
+                <div className="flex flex-col gap-1.5">
+                  <span
+                    className="rounded-[20px] self-start"
+                    style={{
+                      background: urg.bg,
+                      padding: "3px 10px",
+                      fontFamily: "var(--font-inter)",
+                      fontSize: 11,
+                      fontWeight: 600,
+                      color: urg.color,
+                    }}
+                  >
+                    {urg.emoji} {item.urgency.charAt(0).toUpperCase() + item.urgency.slice(1)}
+                  </span>
+                  <span
+                    style={{
+                      fontFamily: "var(--font-space-grotesk)",
+                      fontSize: 17,
+                      fontWeight: 700,
+                      color: "#111827",
+                    }}
+                  >
+                    {item.reporter_name}
+                  </span>
+                  <span style={{ fontFamily: "var(--font-inter)", fontSize: 11, color: "#9CA3AF" }}>
+                    {timeAgo(item.created_at)} · {new Date(item.created_at).toLocaleString("id-ID")}
+                  </span>
+                </div>
+                <button
+                  onClick={() => setSelectedLaporan(null)}
+                  style={{ background: "none", border: "none", cursor: "pointer", padding: 4 }}
+                >
+                  <X size={20} color="#9CA3AF" />
+                </button>
+              </div>
+
+              {/* Body (scrollable) */}
+              <div className="flex flex-col gap-4 overflow-y-auto" style={{ padding: "16px 20px", flex: 1 }}>
+                {/* Meta row */}
+                <div className="flex flex-wrap gap-3">
+                  <div
+                    className="flex items-center gap-1.5 rounded-lg"
+                    style={{ background: "#F9FAFB", padding: "6px 12px", border: "1px solid #F3F4F6" }}
+                  >
+                    <Tag size={13} color="#6B7280" />
+                    <span style={{ fontFamily: "var(--font-inter)", fontSize: 12, color: "#374151", fontWeight: 500 }}>
+                      {KATEGORI_LABEL[item.kategori] ?? item.kategori}
+                    </span>
+                  </div>
+                  <div
+                    className="flex items-center gap-1.5 rounded-lg"
+                    style={{ background: "#F9FAFB", padding: "6px 12px", border: "1px solid #F3F4F6" }}
+                  >
+                    <MapPin size={13} color="#6B7280" />
+                    <span style={{ fontFamily: "var(--font-inter)", fontSize: 12, color: "#374151", fontWeight: 500 }}>
+                      {item.lokasi}
+                    </span>
+                  </div>
+                  <div
+                    className="flex items-center gap-1.5 rounded-lg"
+                    style={{
+                      background: isClaimed ? "#FFF7ED" : "#EFF6FF",
+                      padding: "6px 12px",
+                      border: `1px solid ${isClaimed ? "#FED7AA" : "#BFDBFE"}`,
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontFamily: "var(--font-inter)",
+                        fontSize: 12,
+                        fontWeight: 600,
+                        color: isClaimed ? "#F97316" : "#3B82F6",
+                      }}
+                    >
+                      {isClaimed ? "Sedang Diproses" : "Baru Masuk"}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Description */}
+                <div>
+                  <span
+                    style={{
+                      fontFamily: "var(--font-inter)",
+                      fontSize: 11,
+                      fontWeight: 600,
+                      color: "#9CA3AF",
+                      textTransform: "uppercase",
+                      letterSpacing: 0.5,
+                    }}
+                  >
+                    Deskripsi
+                  </span>
+                  <p
+                    style={{
+                      fontFamily: "var(--font-inter)",
+                      fontSize: 13,
+                      color: "#374151",
+                      lineHeight: 1.6,
+                      margin: "6px 0 0",
+                    }}
+                  >
+                    {item.deskripsi}
+                  </p>
+                </div>
+
+                {/* Photo */}
+                {item.foto_url && (
+                  <div>
+                    <span
+                      style={{
+                        fontFamily: "var(--font-inter)",
+                        fontSize: 11,
+                        fontWeight: 600,
+                        color: "#9CA3AF",
+                        textTransform: "uppercase",
+                        letterSpacing: 0.5,
+                      }}
+                    >
+                      Foto
+                    </span>
+                    <img
+                      src={item.foto_url}
+                      alt="Foto laporan"
+                      className="rounded-xl object-cover"
+                      style={{ width: "100%", maxHeight: 220, marginTop: 6 }}
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Footer actions */}
+              <div
+                className="flex gap-3"
+                style={{ padding: "12px 20px 18px", borderTop: "1px solid #F3F4F6", flexShrink: 0 }}
+              >
+                <button
+                  disabled={isClaiming || isClaimed}
+                  onClick={() => handleClaim(item.id)}
+                  className="flex items-center justify-center gap-2 rounded-xl flex-1"
+                  style={{
+                    padding: "12px 0",
+                    border: "none",
+                    cursor: isClaimed ? "default" : "pointer",
+                    background: isClaimed ? "#F0FDF4" : "linear-gradient(135deg, #16A34A 0%, #22C55E 100%)",
+                    boxShadow: isClaimed ? "none" : "0 4px 14px #16A34A30",
+                    opacity: isClaiming ? 0.7 : 1,
+                  }}
+                >
+                  {isClaiming ? (
+                    <Loader2 size={15} color={isClaimed ? "#16A34A" : "#FFFFFF"} className="animate-spin" />
+                  ) : (
+                    <CheckCheck size={15} color={isClaimed ? "#16A34A" : "#FFFFFF"} />
+                  )}
+                  <span
+                    style={{
+                      fontFamily: "var(--font-space-grotesk)",
+                      fontSize: 13,
+                      fontWeight: 700,
+                      color: isClaimed ? "#16A34A" : "#FFFFFF",
+                    }}
+                  >
+                    {isClaimed ? "Sudah Diklaim" : "Klaim Laporan"}
+                  </span>
+                </button>
+                <button
+                  onClick={() => handleDismiss(item.id)}
+                  className="flex items-center justify-center gap-2 rounded-xl"
+                  style={{
+                    padding: "12px 16px",
+                    border: "1.5px solid #E5E7EB",
+                    cursor: "pointer",
+                    background: "#F9FAFB",
+                  }}
+                >
+                  <EyeOff size={15} color="#9CA3AF" />
+                  <span
+                    style={{
+                      fontFamily: "var(--font-space-grotesk)",
+                      fontSize: 13,
+                      fontWeight: 600,
+                      color: "#6B7280",
+                    }}
+                  >
+                    Abaikan
+                  </span>
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

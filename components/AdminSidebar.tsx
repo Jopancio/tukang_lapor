@@ -11,17 +11,19 @@ import {
   Users,
   ClipboardList,
   MapPin,
+  Inbox,
   LogOut,
   Menu,
   X,
 } from "lucide-react";
 
 const NAV_ITEMS = [
-  { id: "dashboard", label: "Dasbor Admin",   Icon: LayoutDashboard, href: "/admin",          badge: null },
-  { id: "laporan",   label: "Laporan",         Icon: FileBarChart2,   href: "/admin/laporan",  badge: 0 },
-  { id: "pekerja",   label: "Manaj. Pekerja",  Icon: Users,           href: "/admin/pekerja",  badge: null },
-  { id: "tugas",     label: "Manaj. Tugas",    Icon: ClipboardList,   href: "/admin/tugas",    badge: 7 },
-  { id: "area",      label: "Peta Area",       Icon: MapPin,          href: "/admin/area",     badge: null },
+  { id: "dashboard",      label: "Dasbor Admin",   Icon: LayoutDashboard, href: "/admin",                badge: null },
+  { id: "laporan-masuk",  label: "Laporan Masuk",  Icon: Inbox,           href: "/admin/laporan-masuk",  badge: null },
+  { id: "laporan",        label: "Laporan",         Icon: FileBarChart2,   href: "/admin/laporan",        badge: 0 },
+  { id: "pekerja",        label: "Manaj. Pekerja",  Icon: Users,           href: "/admin/pekerja",        badge: null },
+  { id: "tugas",          label: "Manaj. Tugas",    Icon: ClipboardList,   href: "/admin/tugas",          badge: 7 },
+  { id: "area",           label: "Peta Area",       Icon: MapPin,          href: "/admin/area",           badge: null },
 ];
 
 export default function AdminSidebar() {
@@ -80,7 +82,7 @@ export default function AdminSidebar() {
                   lineHeight: 1,
                 }}
               >
-                CleanPoint
+                Tukang Lapor
               </span>
               <span
                 style={{ fontFamily: "var(--font-inter)", fontSize: 10, color: "#93C5FD", lineHeight: 1 }}
@@ -226,12 +228,12 @@ export default function AdminSidebar() {
                 whiteSpace: "nowrap",
               }}
             >
-              Bu Hartini
+              Admin
             </span>
             <span
               style={{ fontFamily: "var(--font-inter)", fontSize: 10, color: "#93C5FD" }}
             >
-              Kepala Sekolah
+              Admin
             </span>
           </div>
           <button

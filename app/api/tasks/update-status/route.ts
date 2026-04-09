@@ -42,14 +42,21 @@ export async function PATCH(request: NextRequest) {
     );
   }
 
-  // Only update own tasks
-  const { data, error } = await supabase
-    .from("tasks")
-    .update({ status })
-    .eq("id", task_id)
-    .eq("pekerja_id", user.id)
-    .select()
+  // Check if user is admin
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
     .single();
+
+  const isAdmin = profile?.role === "admin";
+
+  // Admin can update any task, prakarya can only update own tasks
+  let query = supabase.from("tasks").update({ status }).eq("id", task_id);
+  if (!isAdmin) {
+    query = query.eq("pekerja_id", user.id);
+  }
+  const { data, error } = await query.select().single();
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 400 });

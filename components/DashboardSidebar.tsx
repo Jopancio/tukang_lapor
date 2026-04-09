@@ -3,14 +3,15 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { TrendingUp, LayoutDashboard, ClipboardList, MapPin, History, LogOut, Menu, X } from "lucide-react";
+import { TrendingUp, LayoutDashboard, ClipboardList, MapPin, History, BrainCircuit, LogOut, Menu, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
 const NAV_ITEMS = [
-  { id: "dashboard", label: "Dashboard", Icon: LayoutDashboard, href: "/dashboard", badge: null },
-  { id: "tugas", label: "Tugas Saya", Icon: ClipboardList, href: "/dashboard/tugas", badge: 3 },
-  { id: "area", label: "Peta Area", Icon: MapPin, href: "/dashboard/peta-area", badge: null },
-  { id: "riwayat", label: "Riwayat Kerja", Icon: History, href: "/dashboard/riwayat", badge: null },
+  { id: "dashboard", label: "Dashboard",    Icon: LayoutDashboard, href: "/dashboard",           badge: null },
+  { id: "tugas",     label: "Tugas Saya",   Icon: ClipboardList,   href: "/dashboard/tugas",     badge: 3 },
+  { id: "area",      label: "Peta Area",    Icon: MapPin,          href: "/dashboard/peta-area", badge: null },
+  { id: "riwayat",   label: "Riwayat Kerja", Icon: History,        href: "/dashboard/riwayat",   badge: null },
+  { id: "analisis",  label: "Analisis AI",  Icon: BrainCircuit,    href: "/dashboard/analisis",  badge: null },
 ];
 
 export default function DashboardSidebar() {
@@ -69,7 +70,7 @@ export default function DashboardSidebar() {
                 lineHeight: 1,
               }}
             >
-              CleanPoint
+              Tukang Lapor
             </span>
             <span
               style={{ fontFamily: "var(--font-inter)", fontSize: 10, color: "#86EFAC", lineHeight: 1 }}
