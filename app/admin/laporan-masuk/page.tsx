@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import {
   Bell,
   Inbox,
@@ -15,9 +15,279 @@ import {
   User,
   ChevronDown,
   ChevronUp,
+  ScanSearch,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import AdminSidebar from "@/components/AdminSidebar";
 import { createClient } from "@/lib/supabase/client";
+
+/* ─── DETECTION TYPES ───────────────────────────────────────── */
+
+interface Detection {
+  label: string;
+  confidence: number;
+  box: { x: number; y: number; w: number; h: number };
+}
+
+/* ─── ANNOTATED IMAGE COMPONENT ─────────────────────────────── */
+
+function AnnotatedImage({ fotoUrl, savedAnnotations }: { fotoUrl: string; savedAnnotations?: Detection[] | null }) {
+  const [detections, setDetections] = useState<Detection[]>(savedAnnotations ?? []);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [analyzed, setAnalyzed] = useState(!!savedAnnotations && savedAnnotations.length >= 0);
+  const [showBoxes, setShowBoxes] = useState(true);
+  const [error, setError] = useState("");
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  async function handleAnalyze() {
+    setAnalyzing(true);
+    setError("");
+    try {
+      const res = await fetch("/api/laporan/annotate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ foto_url: fotoUrl }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Gagal menganalisis");
+      setDetections(json.detections ?? []);
+      setAnalyzed(true);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Gagal menganalisis gambar");
+    } finally {
+      setAnalyzing(false);
+    }
+  }
+
+  const BOX_COLORS = ["#EF4444", "#F97316", "#EAB308", "#22C55E", "#3B82F6", "#8B5CF6", "#EC4899"];
+
+  return (
+    <div style={{ marginBottom: 16 }}>
+      {/* Image container with overlays */}
+      <div
+        ref={containerRef}
+        style={{ position: "relative", display: "inline-block", width: "100%", overflow: "hidden", borderRadius: 8 }}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={fotoUrl}
+          alt="Foto laporan"
+          style={{
+            width: "100%",
+            maxHeight: 400,
+            objectFit: "cover",
+            display: "block",
+            border: "1px solid #E5E7EB",
+            borderRadius: 8,
+            background: "#F9FAFB",
+          }}
+        />
+
+        {/* Bounding box overlays */}
+        {analyzed && showBoxes && detections.map((d, i) => {
+          const color = BOX_COLORS[i % BOX_COLORS.length];
+          return (
+            <div
+              key={i}
+              style={{
+                position: "absolute",
+                left: `${d.box.x}%`,
+                top: `${d.box.y}%`,
+                width: `${d.box.w}%`,
+                height: `${d.box.h}%`,
+                border: `2.5px solid ${color}`,
+                borderRadius: 4,
+                pointerEvents: "none",
+                boxShadow: `0 0 0 1px rgba(0,0,0,0.15), inset 0 0 0 1px rgba(255,255,255,0.3)`,
+              }}
+            >
+              {/* Label inside top of box */}
+              <div
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  background: color,
+                  color: "#FFFFFF",
+                  fontFamily: "var(--font-inter, Inter, sans-serif)",
+                  fontSize: 10,
+                  fontWeight: 700,
+                  padding: "2px 6px",
+                  borderRadius: "0 0 4px 0",
+                  whiteSpace: "nowrap",
+                  lineHeight: 1.4,
+                  letterSpacing: 0.2,
+                }}
+              >
+                {d.label} {Math.round(d.confidence * 100)}%
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Action bar */}
+      <div className="flex items-center gap-2 flex-wrap" style={{ marginTop: 8 }}>
+        {!analyzed ? (
+          <button
+            onClick={handleAnalyze}
+            disabled={analyzing}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              padding: "6px 12px",
+              borderRadius: 8,
+              border: "1.5px solid #BFDBFE",
+              background: "#EFF6FF",
+              color: "#2563EB",
+              fontFamily: "var(--font-inter, Inter, sans-serif)",
+              fontSize: 12,
+              fontWeight: 600,
+              cursor: analyzing ? "wait" : "pointer",
+              opacity: analyzing ? 0.7 : 1,
+            }}
+          >
+            {analyzing ? (
+              <Loader2 size={13} className="animate-spin" />
+            ) : (
+              <ScanSearch size={13} />
+            )}
+            {analyzing ? "Menganalisis..." : "Deteksi Sampah"}
+          </button>
+        ) : (
+          <>
+            <button
+              onClick={() => setShowBoxes(!showBoxes)}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 5,
+                padding: "6px 12px",
+                borderRadius: 8,
+                border: showBoxes ? "1.5px solid #BBF7D0" : "1.5px solid #E5E7EB",
+                background: showBoxes ? "#F0FDF4" : "#F9FAFB",
+                color: showBoxes ? "#16A34A" : "#6B7280",
+                fontFamily: "var(--font-inter, Inter, sans-serif)",
+                fontSize: 12,
+                fontWeight: 600,
+                cursor: "pointer",
+              }}
+            >
+              {showBoxes ? <Eye size={13} /> : <EyeOff size={13} />}
+              {showBoxes ? "Sembunyikan" : "Tampilkan"} Anotasi
+            </button>
+            <span
+              style={{
+                fontFamily: "var(--font-inter, Inter, sans-serif)",
+                fontSize: 11,
+                color: detections.length > 0 ? "#DC2626" : "#16A34A",
+                fontWeight: 600,
+              }}
+            >
+              {detections.length > 0
+                ? `${detections.length} sampah terdeteksi`
+                : "Tidak ada sampah terdeteksi"}
+            </span>
+            <button
+              onClick={handleAnalyze}
+              disabled={analyzing}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 4,
+                padding: "5px 10px",
+                borderRadius: 7,
+                border: "1px solid #E5E7EB",
+                background: "#F9FAFB",
+                color: "#6B7280",
+                fontFamily: "var(--font-inter, Inter, sans-serif)",
+                fontSize: 11,
+                fontWeight: 500,
+                cursor: analyzing ? "wait" : "pointer",
+              }}
+            >
+              <RefreshCw size={11} className={analyzing ? "animate-spin" : ""} />
+              Ulang
+            </button>
+          </>
+        )}
+      </div>
+
+      {/* Detection list */}
+      {analyzed && showBoxes && detections.length > 0 && (
+        <div
+          className="flex flex-wrap gap-1.5"
+          style={{ marginTop: 8 }}
+        >
+          {detections.map((d, i) => {
+            const color = BOX_COLORS[i % BOX_COLORS.length];
+            return (
+              <span
+                key={i}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 4,
+                  padding: "3px 8px",
+                  borderRadius: 6,
+                  background: `${color}14`,
+                  border: `1px solid ${color}40`,
+                  fontFamily: "var(--font-inter, Inter, sans-serif)",
+                  fontSize: 11,
+                  fontWeight: 600,
+                  color: color,
+                }}
+              >
+                <span
+                  style={{
+                    width: 8,
+                    height: 8,
+                    borderRadius: 2,
+                    background: color,
+                    display: "inline-block",
+                    flexShrink: 0,
+                  }}
+                />
+                {d.label}
+              </span>
+            );
+          })}
+        </div>
+      )}
+
+      {error && (
+        <span
+          style={{
+            display: "block",
+            marginTop: 6,
+            fontFamily: "var(--font-inter, Inter, sans-serif)",
+            fontSize: 11,
+            color: "#DC2626",
+          }}
+        >
+          {error}
+        </span>
+      )}
+
+      <a
+        href={fotoUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        style={{
+          fontFamily: "var(--font-inter, Inter, sans-serif)",
+          fontSize: 11,
+          color: "#9CA3AF",
+          display: "block",
+          marginTop: 4,
+        }}
+      >
+        Klik untuk buka full size
+      </a>
+    </div>
+  );
+}
 
 /* ─── TYPES ─────────────────────────────────────────────────── */
 
@@ -30,6 +300,7 @@ interface Laporan {
   urgency: string;
   status: string;
   foto_url: string | null;
+  annotations: Detection[] | null;
   created_at: string;
 }
 
@@ -261,34 +532,9 @@ function LaporanCard({
             {laporan.deskripsi}
           </p>
 
-          {/* Photo */}
+          {/* Photo with AI annotation */}
           {laporan.foto_url && (
-            <a href={laporan.foto_url} target="_blank" rel="noopener noreferrer" style={{ display: "block", marginBottom: 16 }}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={laporan.foto_url}
-                alt="Foto laporan"
-                style={{
-                  width: "100%",
-                  maxHeight: 240,
-                  objectFit: "cover",
-                  borderRadius: 8,
-                  border: "1px solid #E5E7EB",
-                  cursor: "zoom-in",
-                }}
-              />
-              <span
-                style={{
-                  fontFamily: "var(--font-inter, Inter, sans-serif)",
-                  fontSize: 11,
-                  color: "#9CA3AF",
-                  display: "block",
-                  marginTop: 4,
-                }}
-              >
-                Klik untuk buka full size
-              </span>
-            </a>
+            <AnnotatedImage fotoUrl={laporan.foto_url} savedAnnotations={laporan.annotations} />
           )}
 
           {/* Action buttons */}

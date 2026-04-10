@@ -1,62 +1,249 @@
 "use client";
 
-import { useState } from "react";
-import { Bell, CheckCircle2, Clock, TrendingUp, Calendar, Filter, ChevronDown } from "lucide-react";
+import { useEffect, useState, useCallback, useRef } from "react";
+import {
+  Bell,
+  CheckCircle2,
+  Clock,
+  TrendingUp,
+  Calendar,
+  Filter,
+  ChevronDown,
+  Loader2,
+  AlertTriangle,
+  RefreshCw,
+} from "lucide-react";
 import DashboardSidebar from "@/components/DashboardSidebar";
+import { createClient } from "@/lib/supabase/client";
 
-/* ─── TYPES & DATA ───────────────────────────────────────────── */
+/* ─── TYPES ──────────────────────────────────────────────────── */
+
+interface Task {
+  id: string;
+  pekerja_id: string;
+  judul: string;
+  prioritas: string;
+  tenggat: string | null;
+  catatan: string | null;
+  status: string;
+  created_at: string;
+  updated_at: string | null;
+}
 
 type PriorityKey = "DARURAT" | "SEGERA" | "NORMAL";
-
-interface HistoryItem {
-  id: number;
-  title: string;
-  location: string;
-  tools: string;
-  priority: PriorityKey;
-  duration: string;
-  date: string;
-  time: string;
-  completedBy: string;
-}
+type FilterOpt = "Semua" | "DARURAT" | "SEGERA" | "NORMAL";
 
 const PRIORITY_STYLE: Record<PriorityKey, { bg: string; color: string }> = {
   DARURAT: { bg: "#FEE2E2", color: "#EF4444" },
-  SEGERA:  { bg: "#FFEDD5", color: "#F97316" },
-  NORMAL:  { bg: "#F0FDF4", color: "#16A34A" },
+  SEGERA: { bg: "#FFEDD5", color: "#F97316" },
+  NORMAL: { bg: "#F0FDF4", color: "#16A34A" },
 };
 
-const HISTORY: HistoryItem[] = [
-  { id: 1,  title: "Koridor Kelas XI-B — Selesai Dibersihkan",   location: "Lantai 2, Gedung A", tools: "Pel + Sapu",              priority: "NORMAL",  duration: "22 mnt", date: "7 Apr 2026",  time: "07:45", completedBy: "Pak Sumarno" },
-  { id: 2,  title: "Tumpahan Cairan — Koridor Kelas X-B",       location: "Lantai 1, Gedung A", tools: "Pel + Papan Peringatan",   priority: "DARURAT", duration: "18 mnt", date: "7 Apr 2026",  time: "06:52", completedBy: "Pak Sumarno" },
-  { id: 3,  title: "Kebersihan Toilet Siswa Lantai 1",          location: "Lantai 1, Gedung A", tools: "Sikat + Disinfektan",      priority: "NORMAL",  duration: "35 mnt", date: "6 Apr 2026",  time: "15:10", completedBy: "Pak Sumarno" },
-  { id: 4,  title: "Sampah Kering — Depan Kantin",              location: "Lantai 1, Gedung A", tools: "Sapu + Serok Sampah",      priority: "SEGERA",  duration: "14 mnt", date: "6 Apr 2026",  time: "10:38", completedBy: "Pak Sumarno" },
-  { id: 5,  title: "Bak Sampah Meluber — Kelas XI-A",           location: "Lantai 2, Gedung A", tools: "Kosongkan Tong Sampah",    priority: "NORMAL",  duration: "10 mnt", date: "6 Apr 2026",  time: "09:22", completedBy: "Pak Sumarno" },
-  { id: 6,  title: "Kotoran Burung — Area Parkiran",            location: "Halaman Sekolah",    tools: "Sikat + Selang Air",       priority: "NORMAL",  duration: "28 mnt", date: "5 Apr 2026",  time: "14:05", completedBy: "Pak Sumarno" },
-  { id: 7,  title: "Genangan Air — Depan Lab IPA",              location: "Lantai 1, Gedung A", tools: "Pel + Kain Lap",           priority: "SEGERA",  duration: "19 mnt", date: "5 Apr 2026",  time: "11:45", completedBy: "Pak Sumarno" },
-  { id: 8,  title: "Aula Pasca Acara — Pembersihan Menyeluruh", location: "Lantai 2, Gedung A", tools: "Sapu + Pel + Vakum",       priority: "NORMAL",  duration: "55 mnt", date: "4 Apr 2026",  time: "16:30", completedBy: "Pak Sumarno" },
-  { id: 9,  title: "Coretan Dinding — Ruang Kelas X-C",        location: "Lantai 1, Gedung B", tools: "Cat Tembok + Kuas",        priority: "NORMAL",  duration: "45 mnt", date: "4 Apr 2026",  time: "13:00", completedBy: "Pak Sumarno" },
-  { id: 10, title: "Saluran Air Tersumbat — Toilet Guru",       location: "Lantai 2, Gedung A", tools: "Alat Pembuka Sumbatan",    priority: "DARURAT", duration: "30 mnt", date: "3 Apr 2026",  time: "09:15", completedBy: "Pak Sumarno" },
-];
+/* ─── HELPERS ────────────────────────────────────────────────── */
 
-type FilterOpt = "Semua" | "DARURAT" | "SEGERA" | "NORMAL";
+function priorityLabel(p: string): PriorityKey {
+  if (p === "darurat") return "DARURAT";
+  if (p === "segera") return "SEGERA";
+  return "NORMAL";
+}
+
+function formatDate(dateStr: string) {
+  return new Date(dateStr).toLocaleDateString("id-ID", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function formatTime(dateStr: string) {
+  return new Date(dateStr).toLocaleTimeString("id-ID", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function todayString() {
+  return new Date().toLocaleDateString("id-ID", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+}
+
+/** Approximate duration between created_at and updated_at (or now). */
+function durationLabel(createdAt: string, updatedAt: string | null): string {
+  const start = new Date(createdAt).getTime();
+  const end = updatedAt ? new Date(updatedAt).getTime() : Date.now();
+  const mins = Math.max(1, Math.round((end - start) / 60000));
+  if (mins < 60) return `${mins} mnt`;
+  const hrs = Math.floor(mins / 60);
+  const rem = mins % 60;
+  return rem > 0 ? `${hrs} jam ${rem} mnt` : `${hrs} jam`;
+}
+
+/** Count unique active days from an array of date strings. */
+function countActiveDays(dates: string[]): number {
+  const unique = new Set(dates.map((d) => new Date(d).toDateString()));
+  return unique.size;
+}
+
+/* ─── PAGE COMPONENT ─────────────────────────────────────────── */
 
 export default function RiwayatPage() {
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [activeFilter, setActiveFilter] = useState<FilterOpt>("Semua");
   const [search, setSearch] = useState("");
+  const supabaseRef = useRef(createClient());
 
-  const visible = HISTORY.filter((h) => {
-    const matchPriority = activeFilter === "Semua" || h.priority === activeFilter;
-    const matchSearch = h.title.toLowerCase().includes(search.toLowerCase()) ||
-      h.location.toLowerCase().includes(search.toLowerCase());
+  /* ── Fetch completed tasks ──────────────────────────────── */
+  const fetchDoneTasks = useCallback(async () => {
+    try {
+      const res = await fetch("/api/tasks/my-tasks");
+      if (!res.ok) throw new Error("Gagal memuat riwayat");
+      const data = await res.json();
+      const allTasks: Task[] = data.tasks ?? [];
+      setTasks(allTasks.filter((t) => t.status === "done"));
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Terjadi kesalahan");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchDoneTasks();
+  }, [fetchDoneTasks]);
+
+  /* ── Realtime subscription ──────────────────────────────── */
+  useEffect(() => {
+    const supabase = supabaseRef.current;
+    let userId: string | null = null;
+
+    supabase.auth.getUser().then(({ data }) => {
+      userId = data.user?.id ?? null;
+    });
+
+    const channel = supabase
+      .channel("riwayat-kerja-realtime")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "tasks" },
+        (payload) => {
+          if (payload.eventType === "INSERT") {
+            const t = payload.new as Task;
+            if (t.pekerja_id === userId && t.status === "done") {
+              setTasks((prev) => [t, ...prev]);
+            }
+          } else if (payload.eventType === "UPDATE") {
+            const t = payload.new as Task;
+            if (t.pekerja_id === userId) {
+              if (t.status === "done") {
+                setTasks((prev) => {
+                  const exists = prev.some((p) => p.id === t.id);
+                  return exists
+                    ? prev.map((p) => (p.id === t.id ? t : p))
+                    : [t, ...prev];
+                });
+              } else {
+                // No longer done — remove from history
+                setTasks((prev) => prev.filter((p) => p.id !== t.id));
+              }
+            }
+          } else if (payload.eventType === "DELETE") {
+            const deleted = payload.old as { id: string };
+            setTasks((prev) => prev.filter((p) => p.id !== deleted.id));
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  /* ── Derived data ───────────────────────────────────────── */
+  const totalDone = tasks.length;
+  const daruratCount = tasks.filter((t) => t.prioritas === "darurat").length;
+  const segeraCount = tasks.filter((t) => t.prioritas === "segera").length;
+  const normalCount = tasks.filter(
+    (t) => t.prioritas !== "darurat" && t.prioritas !== "segera"
+  ).length;
+
+  const avgDuration =
+    totalDone > 0
+      ? Math.round(
+          tasks.reduce((acc, t) => {
+            const start = new Date(t.created_at).getTime();
+            const end = t.updated_at
+              ? new Date(t.updated_at).getTime()
+              : Date.now();
+            return acc + (end - start) / 60000;
+          }, 0) / totalDone
+        )
+      : 0;
+
+  const activeDays = countActiveDays(
+    tasks.map((t) => t.updated_at ?? t.created_at)
+  );
+
+  const visible = tasks.filter((t) => {
+    const pl = priorityLabel(t.prioritas);
+    const matchPriority = activeFilter === "Semua" || pl === activeFilter;
+    const matchSearch =
+      t.judul.toLowerCase().includes(search.toLowerCase()) ||
+      (t.catatan ?? "").toLowerCase().includes(search.toLowerCase());
     return matchPriority && matchSearch;
   });
 
-  // Summary stats
-  const totalTasks   = HISTORY.length;
-  const avgDuration  = Math.round(HISTORY.reduce((acc, h) => acc + parseInt(h.duration), 0) / totalTasks);
-  const daruratCount = HISTORY.filter((h) => h.priority === "DARURAT").length;
-  const activeDays   = 5;
+  /* ── Loading / Error states ─────────────────────────────── */
+  if (loading) {
+    return (
+      <div className="flex h-screen overflow-hidden" style={{ background: "#F0F4F0" }}>
+        <DashboardSidebar />
+        <main className="flex flex-col flex-1 items-center justify-center gap-3">
+          <Loader2 size={32} color="#16A34A" className="animate-spin" />
+          <span style={{ fontFamily: "var(--font-inter)", fontSize: 14, color: "#6B7280" }}>
+            Memuat riwayat kerja...
+          </span>
+        </main>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex h-screen overflow-hidden" style={{ background: "#F0F4F0" }}>
+        <DashboardSidebar />
+        <main className="flex flex-col flex-1 items-center justify-center gap-3">
+          <AlertTriangle size={32} color="#EF4444" />
+          <span style={{ fontFamily: "var(--font-inter)", fontSize: 14, color: "#EF4444" }}>
+            {error}
+          </span>
+          <button
+            onClick={() => { setLoading(true); fetchDoneTasks(); }}
+            className="flex items-center gap-2 rounded-lg"
+            style={{
+              padding: "8px 16px",
+              background: "#16A34A",
+              color: "#FFFFFF",
+              fontFamily: "var(--font-inter)",
+              fontSize: 13,
+              fontWeight: 600,
+              border: "none",
+              cursor: "pointer",
+            }}
+          >
+            <RefreshCw size={14} /> Coba Lagi
+          </button>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen overflow-hidden" style={{ background: "#F0F4F0" }}>
@@ -85,11 +272,12 @@ export default function RiwayatPage() {
               Riwayat Kerja
             </span>
             <span style={{ fontFamily: "var(--font-inter)", fontSize: 12, color: "#6B7280" }}>
-              Senin, 7 April 2026 • Rekap seluruh aktivitas kebersihan
+              {todayString()} • Rekap seluruh aktivitas kebersihan
             </span>
           </div>
-          <div
-            className="relative flex items-center justify-center rounded-[10px]"
+          <button
+            onClick={() => { setLoading(true); fetchDoneTasks(); }}
+            className="flex items-center justify-center rounded-[10px]"
             style={{
               width: 38,
               height: 38,
@@ -97,13 +285,10 @@ export default function RiwayatPage() {
               border: "1px solid #E5E7EB",
               cursor: "pointer",
             }}
+            title="Refresh"
           >
-            <Bell size={17} color="#374151" />
-            <span
-              className="absolute rounded-full"
-              style={{ width: 8, height: 8, background: "#EF4444", top: 6, right: 6 }}
-            />
-          </div>
+            <RefreshCw size={17} color="#374151" />
+          </button>
         </div>
 
         {/* CONTENT */}
@@ -114,10 +299,10 @@ export default function RiwayatPage() {
           {/* STATS ROW */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             {[
-              { Icon: CheckCircle2, iconColor: "#16A34A", iconBg: "#DCFCE7", title: "Total Tugas Selesai", value: String(totalTasks) + " tugas", sub: "Sepanjang riwayat" },
-              { Icon: Clock,        iconColor: "#2563EB", iconBg: "#DBEAFE", title: "Rata-rata Waktu",     value: `${avgDuration} mnt`,         sub: "Per tugas diselesaikan" },
-              { Icon: TrendingUp,   iconColor: "#D97706", iconBg: "#FEF3C7", title: "Tugas Darurat",       value: String(daruratCount) + " tugas", sub: "Berhasil ditangani" },
-              { Icon: Calendar,     iconColor: "#7C3AED", iconBg: "#EDE9FE", title: "Hari Aktif",          value: String(activeDays) + " hari",  sub: "7 hari terakhir" },
+              { Icon: CheckCircle2, iconColor: "#16A34A", iconBg: "#DCFCE7", title: "Total Tugas Selesai", value: `${totalDone} tugas`, sub: "Sepanjang riwayat" },
+              { Icon: Clock, iconColor: "#2563EB", iconBg: "#DBEAFE", title: "Rata-rata Waktu", value: `${avgDuration} mnt`, sub: "Per tugas diselesaikan" },
+              { Icon: TrendingUp, iconColor: "#D97706", iconBg: "#FEF3C7", title: "Tugas Darurat", value: `${daruratCount} tugas`, sub: "Berhasil ditangani" },
+              { Icon: Calendar, iconColor: "#7C3AED", iconBg: "#EDE9FE", title: "Hari Aktif", value: `${activeDays} hari`, sub: "Berdasarkan riwayat" },
             ].map(({ Icon, iconColor, iconBg, title, value, sub }) => (
               <div
                 key={title}
@@ -157,11 +342,18 @@ export default function RiwayatPage() {
           </div>
 
           {/* FILTER + SEARCH */}
-          <div className="flex items-center gap-3">
-            {/* Priority filter */}
+          <div className="flex flex-wrap items-center gap-3">
             {(["Semua", "DARURAT", "SEGERA", "NORMAL"] as FilterOpt[]).map((f) => {
               const active = activeFilter === f;
               const style = f !== "Semua" ? PRIORITY_STYLE[f as PriorityKey] : null;
+              const count =
+                f === "Semua"
+                  ? totalDone
+                  : f === "DARURAT"
+                  ? daruratCount
+                  : f === "SEGERA"
+                  ? segeraCount
+                  : normalCount;
               return (
                 <button
                   key={f}
@@ -169,35 +361,27 @@ export default function RiwayatPage() {
                   className="rounded-[8px]"
                   style={{
                     padding: "7px 14px",
-                    border: active
-                      ? "1.5px solid #15803D"
-                      : "1.5px solid #E5E7EB",
-                    background: active
-                      ? "#F0FDF4"
-                      : style
-                      ? style.bg
-                      : "#FFFFFF",
+                    border: active ? "1.5px solid #15803D" : "1.5px solid #E5E7EB",
+                    background: active ? "#F0FDF4" : style ? style.bg : "#FFFFFF",
                     fontFamily: "var(--font-inter)",
                     fontSize: 12,
                     fontWeight: active ? 700 : 500,
-                    color: active
-                      ? "#15803D"
-                      : style
-                      ? style.color
-                      : "#6B7280",
+                    color: active ? "#15803D" : style ? style.color : "#6B7280",
                     cursor: "pointer",
                   }}
                 >
-                  {f === "Semua" ? `Semua (${totalTasks})` : `${f} (${HISTORY.filter(h => h.priority === f).length})`}
+                  {f === "Semua" ? `Semua (${count})` : `${f} (${count})`}
                 </button>
               );
             })}
-            {/* Search */}
-            <div className="flex items-center gap-2 rounded-[10px] ml-auto" style={{ background: "#FFFFFF", border: "1px solid #E5E7EB", padding: "8px 14px", minWidth: 240 }}>
+            <div
+              className="flex items-center gap-2 rounded-[10px] ml-auto"
+              style={{ background: "#FFFFFF", border: "1px solid #E5E7EB", padding: "8px 14px", minWidth: 240 }}
+            >
               <Filter size={14} color="#6B7280" />
               <input
                 type="text"
-                placeholder="Cari tugas atau lokasi..."
+                placeholder="Cari tugas..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 style={{
@@ -222,13 +406,13 @@ export default function RiwayatPage() {
             <div
               className="grid"
               style={{
-                gridTemplateColumns: "1fr 160px 100px 80px 110px 90px",
+                gridTemplateColumns: "1fr 100px 80px 110px 90px",
                 padding: "13px 20px",
                 background: "#F9FAFB",
                 borderBottom: "1px solid #E5E7EB",
               }}
             >
-              {["Tugas", "Lokasi", "Prioritas", "Durasi", "Tanggal", "Waktu Selesai"].map((h) => (
+              {["Tugas", "Prioritas", "Durasi", "Tanggal", "Waktu Selesai"].map((h) => (
                 <div
                   key={h}
                   className="flex items-center gap-1"
@@ -253,19 +437,24 @@ export default function RiwayatPage() {
                 className="flex flex-col items-center justify-center gap-2"
                 style={{ padding: "40px 20px" }}
               >
+                <CheckCircle2 size={32} color="#D1D5DB" />
                 <span style={{ fontFamily: "var(--font-inter)", fontSize: 14, color: "#9CA3AF" }}>
-                  Tidak ada riwayat yang sesuai filter.
+                  {totalDone === 0
+                    ? "Belum ada tugas yang diselesaikan."
+                    : "Tidak ada riwayat yang sesuai filter."}
                 </span>
               </div>
             ) : (
-              visible.map((item, idx) => {
-                const ps = PRIORITY_STYLE[item.priority];
+              visible.map((task, idx) => {
+                const pl = priorityLabel(task.prioritas);
+                const ps = PRIORITY_STYLE[pl];
+                const completedDate = task.updated_at ?? task.created_at;
                 return (
                   <div
-                    key={item.id}
+                    key={task.id}
                     className="grid items-center"
                     style={{
-                      gridTemplateColumns: "1fr 160px 100px 80px 110px 90px",
+                      gridTemplateColumns: "1fr 100px 80px 110px 90px",
                       padding: "14px 20px",
                       borderBottom: idx < visible.length - 1 ? "1px solid #F3F4F6" : "none",
                       background: idx % 2 === 0 ? "#FFFFFF" : "#FAFAFA",
@@ -288,17 +477,15 @@ export default function RiwayatPage() {
                             color: "#111827",
                           }}
                         >
-                          {item.title}
+                          {task.judul}
                         </span>
-                        <span style={{ fontFamily: "var(--font-inter)", fontSize: 11, color: "#6B7280" }}>
-                          {item.tools}
-                        </span>
+                        {task.catatan && (
+                          <span style={{ fontFamily: "var(--font-inter)", fontSize: 11, color: "#6B7280" }}>
+                            {task.catatan}
+                          </span>
+                        )}
                       </div>
                     </div>
-                    {/* Location */}
-                    <span style={{ fontFamily: "var(--font-inter)", fontSize: 12, color: "#6B7280" }}>
-                      {item.location}
-                    </span>
                     {/* Priority */}
                     <span
                       className="rounded-[20px] inline-flex"
@@ -312,7 +499,7 @@ export default function RiwayatPage() {
                         width: "fit-content",
                       }}
                     >
-                      {item.priority}
+                      {pl}
                     </span>
                     {/* Duration */}
                     <span
@@ -323,16 +510,16 @@ export default function RiwayatPage() {
                         color: "#374151",
                       }}
                     >
-                      {item.duration}
+                      {durationLabel(task.created_at, task.updated_at)}
                     </span>
                     {/* Date */}
                     <span style={{ fontFamily: "var(--font-inter)", fontSize: 12, color: "#374151" }}>
-                      {item.date}
+                      {formatDate(completedDate)}
                     </span>
                     {/* Time + badge */}
                     <div className="flex items-center gap-2">
                       <span style={{ fontFamily: "var(--font-inter)", fontSize: 12, color: "#374151" }}>
-                        {item.time}
+                        {formatTime(completedDate)}
                       </span>
                       <span
                         className="rounded-[20px]"

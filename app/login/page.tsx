@@ -277,11 +277,11 @@ export default function LoginPage() {
                 fontFamily: "var(--font-inter, Inter, sans-serif)",
                 fontSize: 14,
                 fontWeight: 600,
-                color: "#16A34A",
+                color: "#D97706",
                 textDecoration: "none",
               }}
             >
-              Daftar Sekarang
+              Hubungi Admin
             </Link>
           </div>
         </div>

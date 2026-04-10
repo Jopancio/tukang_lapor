@@ -1,7 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { callGeminiWithFallback } from "@/lib/gemini";
 
 export async function POST(req: NextRequest) {
   /* ── Auth: any logged-in worker ─────────────────────────── */
@@ -53,14 +53,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Belum ada data tugas untuk dianalisis." }, { status: 400 });
   }
 
-  /* ── Validate API key ───────────────────────────────────── */
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    return NextResponse.json(
-      { error: "GEMINI_API_KEY belum dikonfigurasi di .env.local" },
-      { status: 500 }
-    );
-  }
+
 
   /* ── Build summary ──────────────────────────────────────── */
   const doneTasks  = allTasks.filter((t) => t.status === "done");
@@ -117,10 +110,13 @@ Berikan respons dalam format JSON berikut (tanpa markdown code block, cukup JSON
 
   /* ── Call Gemini ─────────────────────────────────────────── */
   try {
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-    const result = await model.generateContent(prompt);
-    const text = result.response.text().trim();
+    const text = await callGeminiWithFallback(async (ai, model) => {
+      const response = await ai.models.generateContent({
+        model,
+        contents: prompt,
+      });
+      return (response.text ?? "").trim();
+    });
 
     const cleaned = text.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
 
@@ -134,6 +130,10 @@ Berikan respons dalam format JSON berikut (tanpa markdown code block, cukup JSON
     return NextResponse.json({ analysis: parsed });
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : "Gagal memanggil Gemini";
-    return NextResponse.json({ error: msg }, { status: 500 });
+    const isQuota = /429|503|quota|UNAVAILABLE|RESOURCE_EXHAUSTED|high demand/i.test(msg);
+    return NextResponse.json(
+      { error: isQuota ? "Kuota AI habis. Coba lagi nanti." : msg },
+      { status: isQuota ? 429 : 500 }
+    );
   }
 }

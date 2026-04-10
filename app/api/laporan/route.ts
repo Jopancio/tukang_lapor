@@ -21,7 +21,7 @@ const URGENCY_EMOJI: Record<string, string> = {
 
 export async function POST(request: NextRequest) {
   const body = await request.json();
-  const { reporter_name, lokasi, kategori, deskripsi, urgency, foto_url } = body;
+  const { reporter_name, lokasi, kategori, deskripsi, urgency, foto_url, annotations } = body;
 
   if (!reporter_name || !lokasi || !kategori || !deskripsi) {
     return NextResponse.json(
@@ -45,6 +45,7 @@ export async function POST(request: NextRequest) {
       urgency: urgency || "normal",
       status: "baru",
       foto_url: foto_url || null,
+      annotations: annotations || null,
     })
     .select()
     .single();

@@ -42,7 +42,8 @@ export async function middleware(request: NextRequest) {
   // Guests cannot access the worker dashboard
   if (pathname.startsWith('/dashboard') && isGuest) {
     const redirectUrl = request.nextUrl.clone()
-    redirectUrl.pathname = '/lapor'
+    redirectUrl.pathname = '/guest'
+    redirectUrl.searchParams.set('restricted', '1')
     return NextResponse.redirect(redirectUrl)
   }
 
@@ -59,7 +60,7 @@ export async function middleware(request: NextRequest) {
     if (user.email === ADMIN_EMAIL) {
       redirectUrl.pathname = '/admin'
     } else if (isGuest) {
-      redirectUrl.pathname = '/lapor'
+      redirectUrl.pathname = '/guest'
     } else {
       redirectUrl.pathname = '/dashboard'
     }
@@ -70,6 +71,7 @@ export async function middleware(request: NextRequest) {
   if (pathname.startsWith('/admin') && user && user.email !== ADMIN_EMAIL) {
     const redirectUrl = request.nextUrl.clone()
     redirectUrl.pathname = '/dashboard'
+    redirectUrl.searchParams.set('restricted', '1')
     return NextResponse.redirect(redirectUrl)
   }
 

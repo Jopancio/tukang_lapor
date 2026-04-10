@@ -52,7 +52,7 @@ export async function PATCH(request: NextRequest) {
   const isAdmin = profile?.role === "admin";
 
   // Admin can update any task, prakarya can only update own tasks
-  let query = supabase.from("tasks").update({ status }).eq("id", task_id);
+  let query = supabase.from("tasks").update({ status, updated_at: new Date().toISOString() }).eq("id", task_id);
   if (!isAdmin) {
     query = query.eq("pekerja_id", user.id);
   }

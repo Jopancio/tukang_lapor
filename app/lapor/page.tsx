@@ -15,8 +15,17 @@ import {
   Camera,
   X,
   ImageIcon,
+  ScanSearch,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+
+/* ─── DETECTION TYPE ────────────────────────────────────────── */
+
+interface Detection {
+  label: string;
+  confidence: number;
+  box: { x: number; y: number; w: number; h: number };
+}
 
 /* ─── CONSTANTS ─────────────────────────────────────────────── */
 
@@ -94,6 +103,9 @@ export default function LaporPage() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
+  const [detections, setDetections] = useState<Detection[]>([]);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [analysisDone, setAnalysisDone] = useState(false);
 
   function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -111,6 +123,9 @@ export default function LaporPage() {
     setPhotoFile(null);
     if (photoPreview) URL.revokeObjectURL(photoPreview);
     setPhotoPreview(null);
+    setDetections([]);
+    setAnalysisDone(false);
+    setAnalyzing(false);
     if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
@@ -127,6 +142,7 @@ export default function LaporPage() {
     try {
       // Upload photo if selected
       let foto_url: string | null = null;
+      let photoAnnotations: Detection[] | null = null;
       if (photoFile) {
         const supabase = createClient();
         const ext = photoFile.name.split(".").pop();
@@ -143,6 +159,30 @@ export default function LaporPage() {
           .from("laporan-photos")
           .getPublicUrl(fileName);
         foto_url = urlData.publicUrl;
+
+        // Auto-analyze the photo with AI
+        if (!analysisDone) {
+          setAnalyzing(true);
+          try {
+            const annotateRes = await fetch("/api/laporan/annotate", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ foto_url }),
+            });
+            if (annotateRes.ok) {
+              const annotateJson = await annotateRes.json();
+              photoAnnotations = annotateJson.detections ?? [];
+              setDetections(photoAnnotations ?? []);
+              setAnalysisDone(true);
+            }
+          } catch {
+            // Analysis failure is non-blocking
+          } finally {
+            setAnalyzing(false);
+          }
+        } else {
+          photoAnnotations = detections;
+        }
       }
 
       const res = await fetch("/api/laporan", {
@@ -155,6 +195,7 @@ export default function LaporPage() {
           deskripsi,
           urgency,
           foto_url,
+          annotations: photoAnnotations,
         }),
       });
 
@@ -261,7 +302,7 @@ export default function LaporPage() {
               Kirim Laporan Lain
             </button>
             <Link
-              href="/login"
+              href="/guest"
               style={{
                 display: "block",
                 textAlign: "center",
@@ -275,7 +316,7 @@ export default function LaporPage() {
                 textDecoration: "none",
               }}
             >
-              Login untuk melihat riwayat
+              Lihat Riwayat Laporan
             </Link>
           </div>
         </div>
@@ -314,6 +355,18 @@ export default function LaporPage() {
         </div>
 
         <div className="flex items-center gap-3">
+          <Link
+            href="/guest"
+            style={{
+              fontFamily: "var(--font-inter, Inter, sans-serif)",
+              fontSize: 13,
+              fontWeight: 500,
+              color: "#6B7280",
+              textDecoration: "none",
+            }}
+          >
+            Riwayat
+          </Link>
           <Link
             href="/login"
             style={{
@@ -532,49 +585,145 @@ export default function LaporPage() {
             />
 
             {photoPreview ? (
-              /* Preview */
-              <div style={{ position: "relative", borderRadius: 10, overflow: "hidden", border: "1.5px solid #E5E7EB" }}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={photoPreview}
-                  alt="Preview"
-                  style={{ width: "100%", maxHeight: 220, objectFit: "cover", display: "block" }}
-                />
-                <button
-                  type="button"
-                  onClick={removePhoto}
-                  style={{
-                    position: "absolute",
-                    top: 8,
-                    right: 8,
-                    width: 28,
-                    height: 28,
-                    borderRadius: "50%",
-                    background: "rgba(0,0,0,0.55)",
-                    border: "none",
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  <X size={14} color="#FFFFFF" />
-                </button>
-                <div
-                  style={{
-                    position: "absolute",
-                    bottom: 0,
-                    left: 0,
-                    right: 0,
-                    padding: "6px 12px",
-                    background: "rgba(0,0,0,0.35)",
-                    fontFamily: "var(--font-inter, Inter, sans-serif)",
-                    fontSize: 11,
-                    color: "#FFFFFF",
-                  }}
-                >
-                  {photoFile?.name}
+              /* Preview with annotations */
+              <div className="flex flex-col" style={{ gap: 8 }}>
+                <div style={{ position: "relative", borderRadius: 10, overflow: "hidden", border: "1.5px solid #E5E7EB" }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={photoPreview}
+                    alt="Preview"
+                    style={{ width: "100%", maxHeight: 280, objectFit: "cover", display: "block" }}
+                  />
+                  {/* Annotation overlays */}
+                  {analysisDone && detections.map((d, i) => {
+                    const colors = ["#EF4444", "#F97316", "#EAB308", "#22C55E", "#3B82F6", "#8B5CF6", "#EC4899"];
+                    const color = colors[i % colors.length];
+                    return (
+                      <div
+                        key={i}
+                        style={{
+                          position: "absolute",
+                          left: `${d.box.x}%`,
+                          top: `${d.box.y}%`,
+                          width: `${d.box.w}%`,
+                          height: `${d.box.h}%`,
+                          border: `2px solid ${color}`,
+                          borderRadius: 3,
+                          pointerEvents: "none",
+                          boxShadow: `0 0 0 1px rgba(0,0,0,0.12)`,
+                        }}
+                      >
+                        <div
+                          style={{
+                            position: "absolute",
+                            top: 0,
+                            left: 0,
+                            background: color,
+                            color: "#FFF",
+                            fontSize: 9,
+                            fontWeight: 700,
+                            fontFamily: "var(--font-inter, Inter, sans-serif)",
+                            padding: "1px 5px",
+                            borderRadius: "0 0 3px 0",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {d.label}
+                        </div>
+                      </div>
+                    );
+                  })}
+                  <button
+                    type="button"
+                    onClick={removePhoto}
+                    style={{
+                      position: "absolute",
+                      top: 8,
+                      right: 8,
+                      width: 28,
+                      height: 28,
+                      borderRadius: "50%",
+                      background: "rgba(0,0,0,0.55)",
+                      border: "none",
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      zIndex: 2,
+                    }}
+                  >
+                    <X size={14} color="#FFFFFF" />
+                  </button>
+                  {/* Analyzing overlay */}
+                  {analyzing && (
+                    <div
+                      style={{
+                        position: "absolute",
+                        inset: 0,
+                        background: "rgba(0,0,0,0.45)",
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: 8,
+                        borderRadius: 10,
+                      }}
+                    >
+                      <ScanSearch size={28} color="#FFFFFF" className="animate-pulse" />
+                      <span
+                        style={{
+                          fontFamily: "var(--font-inter, Inter, sans-serif)",
+                          fontSize: 12,
+                          fontWeight: 600,
+                          color: "#FFFFFF",
+                        }}
+                      >
+                        AI sedang mendeteksi sampah...
+                      </span>
+                    </div>
+                  )}
+                  <div
+                    style={{
+                      position: "absolute",
+                      bottom: 0,
+                      left: 0,
+                      right: 0,
+                      padding: "6px 12px",
+                      background: "rgba(0,0,0,0.35)",
+                      fontFamily: "var(--font-inter, Inter, sans-serif)",
+                      fontSize: 11,
+                      color: "#FFFFFF",
+                    }}
+                  >
+                    {photoFile?.name}
+                  </div>
                 </div>
+                {/* Detection summary */}
+                {analysisDone && (
+                  <div
+                    className="flex items-center gap-2 flex-wrap"
+                    style={{
+                      padding: "8px 12px",
+                      borderRadius: 8,
+                      background: detections.length > 0 ? "#FEF2F2" : "#F0FDF4",
+                      border: detections.length > 0 ? "1px solid #FECACA" : "1px solid #BBF7D0",
+                    }}
+                  >
+                    <ScanSearch size={14} color={detections.length > 0 ? "#DC2626" : "#16A34A"} />
+                    <span
+                      style={{
+                        fontFamily: "var(--font-inter, Inter, sans-serif)",
+                        fontSize: 12,
+                        fontWeight: 600,
+                        color: detections.length > 0 ? "#DC2626" : "#16A34A",
+                      }}
+                    >
+                      {detections.length > 0
+                        ? `AI mendeteksi ${detections.length} masalah: ${detections.map((d) => d.label).join(", ")}`
+                        : "AI tidak mendeteksi masalah pada foto"}
+                    </span>
+                  </div>
+                )}
               </div>
             ) : (
               /* Upload trigger */
@@ -682,7 +831,7 @@ export default function LaporPage() {
             {loading ? (
               <>
                 <Loader2 size={18} className="animate-spin" />
-                Mengirim…
+                {analyzing ? "Menganalisis foto..." : "Mengirim..."}
               </>
             ) : (
               "Kirim Laporan"
