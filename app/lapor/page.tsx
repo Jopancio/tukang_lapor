@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
-/* ─── DETECTION TYPE ────────────────────────────────────────── */
+/* --- DETECTION TYPE ------------------------------------------ */
 
 interface Detection {
   label: string;
@@ -27,7 +27,7 @@ interface Detection {
   box: { x: number; y: number; w: number; h: number };
 }
 
-/* ─── CONSTANTS ─────────────────────────────────────────────── */
+/* --- CONSTANTS ----------------------------------------------- */
 
 const KATEGORI_OPTIONS = [
   { value: "kebersihan_kelas", label: "Kebersihan Kelas" },
@@ -46,7 +46,7 @@ const URGENCY_OPTIONS = [
   { value: "darurat", label: "Darurat", color: "#DC2626", bg: "#FEF2F2", border: "#FECACA" },
 ];
 
-/* ─── FIELD WRAPPER ─────────────────────────────────────────── */
+/* --- FIELD WRAPPER ------------------------------------------- */
 
 function Field({
   label,
@@ -89,7 +89,7 @@ const inputStyle: React.CSSProperties = {
   boxSizing: "border-box",
 };
 
-/* ─── PAGE ─────────────────────────────────────────────────── */
+/* --- PAGE --------------------------------------------------- */
 
 export default function LaporPage() {
   const [reporterName, setReporterName] = useState("");
@@ -214,7 +214,7 @@ export default function LaporPage() {
     }
   }
 
-  /* ─── SUCCESS STATE ──────────────────────────────────────── */
+  /* --- SUCCESS STATE ---------------------------------------- */
 
   if (success) {
     return (
@@ -324,7 +324,7 @@ export default function LaporPage() {
     );
   }
 
-  /* ─── FORM ───────────────────────────────────────────────── */
+  /* --- FORM ------------------------------------------------- */
 
   return (
     <div className="flex flex-col min-h-screen" style={{ background: "#F5F7FA" }}>

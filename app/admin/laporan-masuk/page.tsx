@@ -22,7 +22,7 @@ import {
 import AdminSidebar from "@/components/AdminSidebar";
 import { createClient } from "@/lib/supabase/client";
 
-/* ─── DETECTION TYPES ───────────────────────────────────────── */
+/* --- DETECTION TYPES ----------------------------------------- */
 
 interface Detection {
   label: string;
@@ -30,7 +30,7 @@ interface Detection {
   box: { x: number; y: number; w: number; h: number };
 }
 
-/* ─── ANNOTATED IMAGE COMPONENT ─────────────────────────────── */
+/* --- ANNOTATED IMAGE COMPONENT ------------------------------- */
 
 function AnnotatedImage({ fotoUrl, savedAnnotations }: { fotoUrl: string; savedAnnotations?: Detection[] | null }) {
   const [detections, setDetections] = useState<Detection[]>(savedAnnotations ?? []);
@@ -289,7 +289,7 @@ function AnnotatedImage({ fotoUrl, savedAnnotations }: { fotoUrl: string; savedA
   );
 }
 
-/* ─── TYPES ─────────────────────────────────────────────────── */
+/* --- TYPES --------------------------------------------------- */
 
 interface Laporan {
   id: string;
@@ -304,7 +304,7 @@ interface Laporan {
   created_at: string;
 }
 
-/* ─── CONSTANTS ─────────────────────────────────────────────── */
+/* --- CONSTANTS ----------------------------------------------- */
 
 const URGENCY_STYLE: Record<string, { bg: string; color: string; label: string }> = {
   darurat: { bg: "#FEE2E2", color: "#DC2626", label: "DARURAT" },
@@ -331,7 +331,7 @@ const KATEGORI_LABEL: Record<string, string> = {
 
 const STATUS_FILTERS = ["semua", "baru", "diproses", "selesai"];
 
-/* ─── HELPERS ───────────────────────────────────────────────── */
+/* --- HELPERS ------------------------------------------------- */
 
 function timeAgo(dateStr: string) {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -363,7 +363,7 @@ function todayString() {
   });
 }
 
-/* ─── LAPORAN CARD ───────────────────────────────────────────── */
+/* --- LAPORAN CARD --------------------------------------------- */
 
 function LaporanCard({
   laporan,
@@ -615,7 +615,7 @@ function LaporanCard({
   );
 }
 
-/* ─── PAGE ─────────────────────────────────────────────────── */
+/* --- PAGE --------------------------------------------------- */
 
 export default function LaporanMasukPage() {
   const [laporan, setLaporan] = useState<Laporan[]>([]);
@@ -678,10 +678,10 @@ export default function LaporanMasukPage() {
 
   return (
     <div className="flex min-h-screen" style={{ background: "#F5F7FA" }}>
-      <AdminSidebar activePage="laporan-masuk" />
+      <AdminSidebar />
 
       <div className="flex flex-col flex-1" style={{ minWidth: 0 }}>
-        {/* ── Top bar ───────────────────────────────────────── */}
+        {/* -- Top bar ----------------------------------------- */}
         <div
           className="flex items-center justify-between px-4 sm:px-8"
           style={{
@@ -779,7 +779,7 @@ export default function LaporanMasukPage() {
           </div>
         </div>
 
-        {/* ── Content ───────────────────────────────────────── */}
+        {/* -- Content ----------------------------------------- */}
         <div className="flex flex-col flex-1 px-4 sm:px-8 py-6" style={{ gap: 24 }}>
 
           {/* Summary Stats */}

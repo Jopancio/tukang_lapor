@@ -16,7 +16,7 @@ import {
 import DashboardSidebar from "@/components/DashboardSidebar";
 import { createClient } from "@/lib/supabase/client";
 
-/* ─── TYPES ──────────────────────────────────────────────────── */
+/* --- TYPES ---------------------------------------------------- */
 
 interface Task {
   id: string;
@@ -39,7 +39,7 @@ const PRIORITY_STYLE: Record<PriorityKey, { bg: string; color: string }> = {
   NORMAL: { bg: "#F0FDF4", color: "#16A34A" },
 };
 
-/* ─── HELPERS ────────────────────────────────────────────────── */
+/* --- HELPERS -------------------------------------------------- */
 
 function priorityLabel(p: string): PriorityKey {
   if (p === "darurat") return "DARURAT";
@@ -88,7 +88,7 @@ function countActiveDays(dates: string[]): number {
   return unique.size;
 }
 
-/* ─── PAGE COMPONENT ─────────────────────────────────────────── */
+/* --- PAGE COMPONENT ------------------------------------------- */
 
 export default function RiwayatPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -98,7 +98,7 @@ export default function RiwayatPage() {
   const [search, setSearch] = useState("");
   const supabaseRef = useRef(createClient());
 
-  /* ── Fetch completed tasks ──────────────────────────────── */
+  /* -- Fetch completed tasks -------------------------------- */
   const fetchDoneTasks = useCallback(async () => {
     try {
       const res = await fetch("/api/tasks/my-tasks");
@@ -118,7 +118,7 @@ export default function RiwayatPage() {
     fetchDoneTasks();
   }, [fetchDoneTasks]);
 
-  /* ── Realtime subscription ──────────────────────────────── */
+  /* -- Realtime subscription -------------------------------- */
   useEffect(() => {
     const supabase = supabaseRef.current;
     let userId: string | null = null;
@@ -166,7 +166,7 @@ export default function RiwayatPage() {
     };
   }, []);
 
-  /* ── Derived data ───────────────────────────────────────── */
+  /* -- Derived data ----------------------------------------- */
   const totalDone = tasks.length;
   const daruratCount = tasks.filter((t) => t.prioritas === "darurat").length;
   const segeraCount = tasks.filter((t) => t.prioritas === "segera").length;
@@ -200,7 +200,7 @@ export default function RiwayatPage() {
     return matchPriority && matchSearch;
   });
 
-  /* ── Loading / Error states ─────────────────────────────── */
+  /* -- Loading / Error states ------------------------------- */
   if (loading) {
     return (
       <div className="flex h-screen overflow-hidden" style={{ background: "#F0F4F0" }}>

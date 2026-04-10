@@ -25,7 +25,7 @@ import {
 import AdminSidebar from "@/components/AdminSidebar";
 import { createClient } from "@/lib/supabase/client";
 
-/* ─── TYPES ──────────────────────────────────────────────────── */
+/* --- TYPES ---------------------------------------------------- */
 
 interface Profile {
   id: string;
@@ -56,7 +56,7 @@ function formatDate(iso: string): string {
   });
 }
 
-/* ─── WORKER DETAIL MODAL ───────────────────────────────────── */
+/* --- WORKER DETAIL MODAL ------------------------------------- */
 
 function WorkerDetailModal({
   worker,
@@ -125,7 +125,7 @@ function WorkerDetailModal({
   );
 }
 
-/* ─── ASSIGN TUGAS MODAL ─────────────────────────────────────── */
+/* --- ASSIGN TUGAS MODAL --------------------------------------- */
 
 const PRIORITAS_OPTIONS = [
   { id: "tinggi", label: "Tinggi", bg: "#FEE2E2", color: "#EF4444" },
@@ -211,7 +211,7 @@ function AssignTugasModal({ worker, onClose }: { worker: Profile; onClose: () =>
   );
 }
 
-/* ─── EDIT WORKER MODAL ──────────────────────────────────────── */
+/* --- EDIT WORKER MODAL ---------------------------------------- */
 
 function EditWorkerModal({ worker, onClose, onSaved }: { worker: Profile; onClose: () => void; onSaved: (updated: Profile) => void }) {
   const [form, setForm] = useState({ name: worker.name || "", role: worker.role || "Bapa Prakarya", area: worker.area || "", phone: worker.phone || "" });
@@ -268,7 +268,7 @@ function EditWorkerModal({ worker, onClose, onSaved }: { worker: Profile; onClos
   );
 }
 
-/* ─── DELETE CONFIRM MODAL ───────────────────────────────────── */
+/* --- DELETE CONFIRM MODAL ------------------------------------- */
 
 function DeleteConfirmModal({ worker, onClose, onDeleted }: { worker: Profile; onClose: () => void; onDeleted: (id: string) => void }) {
   const [loading, setLoading] = useState(false);
@@ -306,7 +306,7 @@ function DeleteConfirmModal({ worker, onClose, onDeleted }: { worker: Profile; o
   );
 }
 
-/* ─── ADD WORKER MODAL ────────────────────────────────────────── */
+/* --- ADD WORKER MODAL ------------------------------------------ */
 
 function AddWorkerModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
   const [form, setForm] = useState({ name: "", role: "Bapa Prakarya", area: "", phone: "", email: "", password: "" });
@@ -505,7 +505,7 @@ function AddWorkerModal({ onClose, onSuccess }: { onClose: () => void; onSuccess
   );
 }
 
-/* ─── PAGE ──────────────────────────────────────────────────── */
+/* --- PAGE ---------------------------------------------------- */
 
 export default function AdminPekerjaPage() {
   const [showModal, setShowModal] = useState(false);

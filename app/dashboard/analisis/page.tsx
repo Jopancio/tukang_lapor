@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import DashboardSidebar from "@/components/DashboardSidebar";
 
-/* ── Types ────────────────────────────────────────────────── */
+/* -- Types -------------------------------------------------- */
 
 type CategoryStatus = "baik" | "perlu_perhatian" | "kritis";
 
@@ -44,7 +44,7 @@ interface TaskSummary {
   darurat: number;
 }
 
-/* ── Helpers ─────────────────────────────────────────────── */
+/* -- Helpers ----------------------------------------------- */
 
 function todayString() {
   const d = new Date();
@@ -131,7 +131,7 @@ function CategoryCard({ item }: { item: CategoryItem }) {
   );
 }
 
-/* ── Page ────────────────────────────────────────────────── */
+/* -- Page -------------------------------------------------- */
 
 const FOCUS_OPTIONS = [
   { value: "",                                    label: "Analisis Umum" },
@@ -151,7 +151,7 @@ export default function DashboardAnalisisPage() {
   const [focus, setFocus]           = useState("");
   const [lastAnalyzed, setLastAnalyzed] = useState<string | null>(null);
 
-  /* ── Fetch summary from my-tasks ────────────────────────── */
+  /* -- Fetch summary from my-tasks -------------------------- */
   const fetchData = useCallback(async () => {
     try {
       setDataError(null);
@@ -175,7 +175,7 @@ export default function DashboardAnalisisPage() {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  /* ── Run AI ─────────────────────────────────────────────── */
+  /* -- Run AI ----------------------------------------------- */
   const runAnalysis = async () => {
     setLoadingAI(true);
     setAiError(null);
@@ -201,7 +201,7 @@ export default function DashboardAnalisisPage() {
     }
   };
 
-  /* ── Loading / Error states ─────────────────────────────── */
+  /* -- Loading / Error states ------------------------------- */
   if (loadingData) {
     return (
       <div className="flex h-screen overflow-hidden" style={{ background: "#F0F4F0" }}>

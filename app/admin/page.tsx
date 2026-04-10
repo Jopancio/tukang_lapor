@@ -17,7 +17,7 @@ import {
 import AdminSidebar from "@/components/AdminSidebar";
 import { createClient } from "@/lib/supabase/client";
 
-/* ─── TYPES ─────────────────────────────────────────────────── */
+/* --- TYPES --------------------------------------------------- */
 
 interface Profile {
   id: string;
@@ -47,7 +47,7 @@ const PRIORITY_STYLE: Record<string, { bg: string; color: string }> = {
   normal: { bg: "#F0FDF4", color: "#16A34A" },
 };
 
-/* ─── HELPERS ───────────────────────────────────────────────── */
+/* --- HELPERS ------------------------------------------------- */
 
 function timeAgo(dateStr: string) {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -68,7 +68,7 @@ function formatDate() {
   });
 }
 
-/* ─── PAGE ─────────────────────────────────────────────────── */
+/* --- PAGE --------------------------------------------------- */
 
 export default function AdminDashboardPage() {
   const [profiles, setProfiles] = useState<Profile[]>([]);

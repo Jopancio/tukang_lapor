@@ -19,7 +19,7 @@ import DashboardSidebar from "@/components/DashboardSidebar";
 import PushNotificationManager from "@/components/PushNotificationManager";
 import { createClient } from "@/lib/supabase/client";
 
-/* ─── TYPES ─────────────────────────────────────────────────── */
+/* --- TYPES --------------------------------------------------- */
 
 interface Task {
   id: string;
@@ -34,7 +34,7 @@ interface Task {
 
 type FilterKey = "semua" | "pending" | "in_progress" | "done";
 
-/* ─── HELPERS ───────────────────────────────────────────────── */
+/* --- HELPERS ------------------------------------------------- */
 
 function timeAgo(dateStr: string) {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -75,7 +75,7 @@ function formatDate() {
   });
 }
 
-/* ─── PAGE COMPONENT ─────────────────────────────────────────── */
+/* --- PAGE COMPONENT ------------------------------------------- */
 
 export default function TugasSayaPage() {
   const [tasks, setTasks] = useState<Task[]>([]);

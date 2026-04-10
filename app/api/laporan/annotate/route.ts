@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
 
 
 
-  /* ── Fetch image and convert to base64 ────────────────── */
+  /* -- Fetch image and convert to base64 ------------------ */
   let base64Data: string;
   let mimeType: string;
 
@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  /* ── Ask Gemini to detect trash locations ─────────────── */
+  /* -- Ask Gemini to detect trash locations --------------- */
   const prompt = `You are a trash/litter detection assistant for a school cleanliness app.
 
 Analyze this image and identify all visible trash, litter, garbage, waste, dirt, or cleanliness issues.

@@ -22,7 +22,7 @@ import {
 import DashboardSidebar from "@/components/DashboardSidebar";
 import { createClient } from "@/lib/supabase/client";
 
-/* ─── TYPES ─────────────────────────────────────────────────── */
+/* --- TYPES --------------------------------------------------- */
 
 interface Task {
   id: string;
@@ -47,7 +47,7 @@ interface Laporan {
   created_at: string;
 }
 
-/* ─── HELPERS ───────────────────────────────────────────────── */
+/* --- HELPERS ------------------------------------------------- */
 
 const KATEGORI_LABEL: Record<string, string> = {
   kebersihan_kelas:    "Kebersihan Kelas",
@@ -99,7 +99,7 @@ function formatDate() {
   });
 }
 
-/* ─── PAGE ──────────────────────────────────────────────────── */
+/* --- PAGE ---------------------------------------------------- */
 
 export default function DashboardBapaPrakarya() {
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -1465,7 +1465,7 @@ export default function DashboardBapaPrakarya() {
   );
 }
 
-/* ─── SUB-COMPONENTS ────────────────────────────────────────── */
+/* --- SUB-COMPONENTS ------------------------------------------ */
 
 function StatCard({
   iconBg,

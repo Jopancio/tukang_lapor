@@ -808,7 +808,7 @@ export default function AdminTugasPage() {
             </div>
           </div>
 
-          {/* ── LAPORAN MASUK SECTION ── */}
+          {/* -- LAPORAN MASUK SECTION -- */}
           <div className="flex flex-col gap-4">
             {/* Section header */}
             <div className="flex items-center justify-between">

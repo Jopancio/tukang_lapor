@@ -8,7 +8,7 @@ import {
   BarChart3, Sparkles, Mail, ExternalLink,
 } from "lucide-react";
 
-/* ── helpers ── */
+/* -- helpers -- */
 function useScrollY() {
   const [y, setY] = useState(0);
   useEffect(() => {
@@ -31,7 +31,7 @@ function useInView(ref: React.RefObject<HTMLElement | null>) {
   return visible;
 }
 
-/* ── data ── */
+/* -- data -- */
 const FEATURES = [
   { icon: FileText,    color: "#3B82F6", bg: "#EFF6FF", title: "Pelaporan Instan",         desc: "Kirim laporan kebersihan kapan saja, dari mana saja. Tanpa perlu login, cukup isi form singkat." },
   { icon: Zap,         color: "#F59E0B", bg: "#FFFBEB", title: "Analisis AI Otomatis",     desc: "Foto masalah kebersihan langsung dianalisis oleh AI untuk mendeteksi kategori dan tingkat urgensi." },
@@ -61,7 +61,7 @@ const STATS = [
   { value: "<30m", label: "Rata-rata Respons" },
 ];
 
-/* ── Navbar ── */
+/* -- Navbar -- */
 function Navbar({ scrollY }: { scrollY: number }) {
   const [open, setOpen] = useState(false);
   const scrolled = scrollY > 20;
@@ -155,7 +155,7 @@ function Navbar({ scrollY }: { scrollY: number }) {
   );
 }
 
-/* ── page ── */
+/* -- page -- */
 export default function LandingPage() {
   const scrollY = useScrollY();
 
@@ -173,7 +173,7 @@ export default function LandingPage() {
     <div style={{ background: "#FAFBFF", overflowX: "hidden" }}>
       <Navbar scrollY={scrollY} />
 
-      {/* ── HERO ── */}
+      {/* -- HERO -- */}
       <section style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", position: "relative", paddingTop: 100, paddingBottom: 80 }}>
         {/* BG blobs */}
         <div style={{ position: "absolute", inset: 0, overflow: "hidden", pointerEvents: "none" }}>
@@ -237,7 +237,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── STATS ── */}
+      {/* -- STATS -- */}
       <section ref={statsRef as React.RefObject<HTMLElement>} style={{ background: "linear-gradient(135deg, #1E3A5F 0%, #1e40af 100%)", padding: "64px 20px" }}>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6" style={{ maxWidth: 900, margin: "0 auto" }}>
           {STATS.map(({ value, label }, i) => (
@@ -249,7 +249,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── FEATURES ── */}
+      {/* -- FEATURES -- */}
       <section id="fitur" ref={featRef as React.RefObject<HTMLElement>} style={{ padding: "100px 20px" }}>
         <div style={{ maxWidth: 1100, margin: "0 auto" }}>
           <div className="flex flex-col items-center text-center" style={{ gap: 16, marginBottom: 64 }}>
@@ -287,7 +287,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── HOW IT WORKS ── */}
+      {/* -- HOW IT WORKS -- */}
       <section id="cara-kerja" ref={stepsRef as React.RefObject<HTMLElement>} style={{ padding: "100px 20px", background: "#F8FAFC" }}>
         <div style={{ maxWidth: 900, margin: "0 auto" }}>
           <div className="flex flex-col items-center text-center" style={{ gap: 16, marginBottom: 64 }}>
@@ -322,7 +322,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── TESTIMONIALS ── */}
+      {/* -- TESTIMONIALS -- */}
       <section id="testimoni" ref={testiRef as React.RefObject<HTMLElement>} style={{ padding: "100px 20px" }}>
         <div style={{ maxWidth: 1100, margin: "0 auto" }}>
           <div className="flex flex-col items-center text-center" style={{ gap: 16, marginBottom: 64 }}>
@@ -365,7 +365,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── CTA BANNER ── */}
+      {/* -- CTA BANNER -- */}
       <section style={{ padding: "80px 20px" }}>
         <div style={{ maxWidth: 860, margin: "0 auto", background: "linear-gradient(135deg, #0F172A 0%, #1E3A5F 50%, #1d4ed8 100%)", borderRadius: 28, padding: "clamp(48px,6vw,72px) clamp(28px,5vw,64px)", textAlign: "center", position: "relative", overflow: "hidden", boxShadow: "0 24px 80px rgba(30,58,95,0.35)" }}>
           <div style={{ position: "absolute", top: -60, right: -60, width: 200, height: 200, borderRadius: "50%", background: "rgba(255,255,255,0.05)" }} />
@@ -397,7 +397,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── FOOTER ── */}
+      {/* -- FOOTER -- */}
       <footer style={{ background: "#0F172A", padding: "56px 20px 32px" }}>
         <div style={{ maxWidth: 1100, margin: "0 auto" }}>
           <div className="flex flex-col md:flex-row items-start justify-between gap-10 mb-10">

@@ -24,7 +24,7 @@ import {
 import { createClient } from "@/lib/supabase/client";
 import RestrictedPopup from "@/components/RestrictedPopup";
 
-/* ─── TYPES ──────────────────────────────────────────────────── */
+/* --- TYPES ---------------------------------------------------- */
 
 interface Laporan {
   id: string;
@@ -40,7 +40,7 @@ interface Laporan {
 
 type StatusFilter = "semua" | "baru" | "proses" | "selesai";
 
-/* ─── HELPERS ────────────────────────────────────────────────── */
+/* --- HELPERS -------------------------------------------------- */
 
 const KATEGORI_LABEL: Record<string, string> = {
   kebersihan_kelas: "Kebersihan Kelas",
@@ -99,7 +99,7 @@ function formatDate(dateStr: string) {
   });
 }
 
-/* ─── PAGE COMPONENT ─────────────────────────────────────────── */
+/* --- PAGE COMPONENT ------------------------------------------- */
 
 export default function GuestDashboardPage() {
   const [name, setName] = useState("");
@@ -112,7 +112,7 @@ export default function GuestDashboardPage() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const supabaseRef = useRef(createClient());
 
-  /* ── Fetch laporan by name ──────────────────────────────── */
+  /* -- Fetch laporan by name -------------------------------- */
   const fetchLaporan = useCallback(async (searchName: string) => {
     if (searchName.trim().length < 2) return;
     setLoading(true);
@@ -130,7 +130,7 @@ export default function GuestDashboardPage() {
     }
   }, []);
 
-  /* ── Realtime subscription ──────────────────────────────── */
+  /* -- Realtime subscription -------------------------------- */
   useEffect(() => {
     if (!submittedName) return;
 
@@ -176,7 +176,7 @@ export default function GuestDashboardPage() {
     fetchLaporan(name);
   }
 
-  /* ── Derived data ───────────────────────────────────────── */
+  /* -- Derived data ----------------------------------------- */
   const baruCount = laporan.filter((l) => l.status === "baru").length;
   const prosesCount = laporan.filter((l) => l.status === "proses").length;
   const selesaiCount = laporan.filter((l) => l.status === "selesai").length;
@@ -185,7 +185,7 @@ export default function GuestDashboardPage() {
     return activeFilter === "semua" || l.status === activeFilter;
   });
 
-  /* ─── RENDER ───────────────────────────────────────────────── */
+  /* --- RENDER ------------------------------------------------- */
   return (
     <div className="flex flex-col min-h-screen" style={{ background: "#F5F7FA" }}>
       <Suspense fallback={null}>

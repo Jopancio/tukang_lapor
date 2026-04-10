@@ -97,7 +97,7 @@ function usePushNotification() {
   return { isSupported, subscription, loading, ready, subscribeToPush, unsubscribeFromPush };
 }
 
-/* ─── BELL BUTTON (topbar) ──────────────────────────────────── */
+/* --- BELL BUTTON (topbar) ------------------------------------ */
 
 export default function PushNotificationManager() {
   const { isSupported, subscription, loading, subscribeToPush, unsubscribeFromPush } =
@@ -131,7 +131,7 @@ export default function PushNotificationManager() {
   );
 }
 
-/* ─── POPUP (shown when not subscribed) ─────────────────────── */
+/* --- POPUP (shown when not subscribed) ----------------------- */
 
 export function PushNotificationPopup() {
   const { isSupported, subscription, loading, ready, subscribeToPush } =

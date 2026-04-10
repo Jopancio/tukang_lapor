@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { callGeminiWithFallback } from "@/lib/gemini";
 
 export async function POST(req: NextRequest) {
-  /* ── Auth: any logged-in worker ─────────────────────────── */
+  /* -- Auth: any logged-in worker --------------------------- */
   const cookieStore = await cookies();
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -26,11 +26,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Tidak diizinkan" }, { status: 401 });
   }
 
-  /* ── Parse body ─────────────────────────────────────────── */
+  /* -- Parse body ------------------------------------------- */
   const body = await req.json().catch(() => ({}));
   const { focus } = body as { focus?: string };
 
-  /* ── Fetch worker's own tasks ───────────────────────────── */
+  /* -- Fetch worker's own tasks ----------------------------- */
   const { data: tasks, error: tasksError } = await supabase
     .from("tasks")
     .select("*")
@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
 
 
 
-  /* ── Build summary ──────────────────────────────────────── */
+  /* -- Build summary ---------------------------------------- */
   const doneTasks  = allTasks.filter((t) => t.status === "done");
   const inProgress = allTasks.filter((t) => t.status === "progress");
   const waiting    = allTasks.filter((t) => t.status === "menunggu");
@@ -71,7 +71,7 @@ export async function POST(req: NextRequest) {
   const workerName = profile?.name ?? user.email ?? "Pekerja";
   const workerArea = profile?.area ?? "-";
 
-  /* ── Build Gemini prompt ────────────────────────────────── */
+  /* -- Build Gemini prompt ---------------------------------- */
   const focusNote = focus ? `\nFokus analisis: ${focus}.` : "";
 
   const prompt = `
@@ -108,7 +108,7 @@ Berikan respons dalam format JSON berikut (tanpa markdown code block, cukup JSON
 }
 `;
 
-  /* ── Call Gemini ─────────────────────────────────────────── */
+  /* -- Call Gemini ------------------------------------------- */
   try {
     const text = await callGeminiWithFallback(async (ai, model) => {
       const response = await ai.models.generateContent({
