@@ -26,6 +26,12 @@ import RestrictedPopup from "@/components/RestrictedPopup";
 
 /* --- TYPES ---------------------------------------------------- */
 
+interface Detection {
+  label: string;
+  confidence: number;
+  box: { x: number; y: number; w: number; h: number };
+}
+
 interface Laporan {
   id: string;
   reporter_name: string;
@@ -35,6 +41,7 @@ interface Laporan {
   urgency: string;
   status: string;
   foto_url: string | null;
+  annotations: Detection[] | null;
   created_at: string;
 }
 
@@ -613,24 +620,78 @@ export default function GuestDashboardPage() {
                               </p>
                             </div>
 
-                            {/* Photo */}
+                            {/* Photo with AI annotations */}
                             {l.foto_url && (
                               <div className="flex flex-col gap-1">
                                 <span style={{ fontFamily: "var(--font-inter)", fontSize: 11, fontWeight: 600, color: "#6B7280" }}>
                                   Foto Bukti
                                 </span>
-                                {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img
-                                  src={l.foto_url}
-                                  alt="Bukti laporan"
-                                  style={{
-                                    width: "100%",
-                                    maxHeight: 240,
-                                    objectFit: "cover",
-                                    borderRadius: 10,
-                                    border: "1px solid #E5E7EB",
-                                  }}
-                                />
+                                <div style={{ position: "relative", borderRadius: 10, overflow: "hidden", border: "1px solid #E5E7EB" }}>
+                                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                                  <img
+                                    src={l.foto_url}
+                                    alt="Bukti laporan"
+                                    style={{
+                                      width: "100%",
+                                      maxHeight: 240,
+                                      objectFit: "cover",
+                                      display: "block",
+                                    }}
+                                  />
+                                  {l.annotations && l.annotations.length > 0 && l.annotations.map((d, i) => {
+                                    const colors = ["#EF4444","#F97316","#EAB308","#22C55E","#3B82F6","#8B5CF6","#EC4899"];
+                                    const color = colors[i % colors.length];
+                                    return (
+                                      <div
+                                        key={i}
+                                        style={{
+                                          position: "absolute",
+                                          left: `${d.box.x}%`,
+                                          top: `${d.box.y}%`,
+                                          width: `${d.box.w}%`,
+                                          height: `${d.box.h}%`,
+                                          border: `2px solid ${color}`,
+                                          borderRadius: 3,
+                                          pointerEvents: "none",
+                                        }}
+                                      >
+                                        <span
+                                          style={{
+                                            position: "absolute",
+                                            top: 0,
+                                            left: 0,
+                                            background: color,
+                                            color: "#fff",
+                                            fontSize: 9,
+                                            fontWeight: 700,
+                                            padding: "1px 5px",
+                                            borderRadius: "0 0 3px 0",
+                                            whiteSpace: "nowrap",
+                                            fontFamily: "var(--font-inter)",
+                                          }}
+                                        >
+                                          {d.label}
+                                        </span>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                                {l.annotations && l.annotations.length > 0 && (
+                                  <div
+                                    className="flex items-center gap-1.5"
+                                    style={{
+                                      padding: "4px 8px",
+                                      borderRadius: 6,
+                                      background: "#FEF2F2",
+                                      border: "1px solid #FECACA",
+                                    }}
+                                  >
+                                    <AlertTriangle size={11} color="#DC2626" />
+                                    <span style={{ fontFamily: "var(--font-inter)", fontSize: 10, color: "#DC2626", fontWeight: 600 }}>
+                                      AI mendeteksi {l.annotations.length} masalah
+                                    </span>
+                                  </div>
+                                )}
                               </div>
                             )}
 

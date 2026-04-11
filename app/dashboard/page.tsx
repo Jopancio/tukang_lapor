@@ -35,6 +35,12 @@ interface Task {
   created_at: string;
 }
 
+interface Detection {
+  label: string;
+  confidence: number;
+  box: { x: number; y: number; w: number; h: number };
+}
+
 interface Laporan {
   id: string;
   reporter_name: string;
@@ -43,6 +49,7 @@ interface Laporan {
   deskripsi: string;
   urgency: string;
   foto_url: string | null;
+  annotations: Detection[] | null;
   status: string;
   created_at: string;
 }
@@ -1375,7 +1382,7 @@ export default function DashboardBapaPrakarya() {
                   </p>
                 </div>
 
-                {/* Photo */}
+                {/* Photo with AI annotations */}
                 {item.foto_url && (
                   <div>
                     <span
@@ -1390,12 +1397,67 @@ export default function DashboardBapaPrakarya() {
                     >
                       Foto
                     </span>
-                    <img
-                      src={item.foto_url}
-                      alt="Foto laporan"
-                      className="rounded-xl object-cover"
-                      style={{ width: "100%", maxHeight: 220, marginTop: 6 }}
-                    />
+                    <div style={{ position: "relative", marginTop: 6, borderRadius: 12, overflow: "hidden" }}>
+                      <img
+                        src={item.foto_url}
+                        alt="Foto laporan"
+                        style={{ width: "100%", maxHeight: 220, objectFit: "cover", display: "block" }}
+                      />
+                      {item.annotations && item.annotations.length > 0 && item.annotations.map((d, i) => {
+                        const colors = ["#EF4444","#F97316","#EAB308","#22C55E","#3B82F6","#8B5CF6","#EC4899"];
+                        const color = colors[i % colors.length];
+                        return (
+                          <div
+                            key={i}
+                            style={{
+                              position: "absolute",
+                              left: `${d.box.x}%`,
+                              top: `${d.box.y}%`,
+                              width: `${d.box.w}%`,
+                              height: `${d.box.h}%`,
+                              border: `2px solid ${color}`,
+                              borderRadius: 3,
+                              pointerEvents: "none",
+                            }}
+                          >
+                            <span
+                              style={{
+                                position: "absolute",
+                                top: 0,
+                                left: 0,
+                                background: color,
+                                color: "#fff",
+                                fontSize: 9,
+                                fontWeight: 700,
+                                padding: "1px 5px",
+                                borderRadius: "0 0 3px 0",
+                                whiteSpace: "nowrap",
+                                fontFamily: "var(--font-inter)",
+                              }}
+                            >
+                              {d.label}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    {item.annotations && item.annotations.length > 0 && (
+                      <div
+                        className="flex items-center gap-1.5"
+                        style={{
+                          marginTop: 6,
+                          padding: "5px 10px",
+                          borderRadius: 8,
+                          background: "#FEF2F2",
+                          border: "1px solid #FECACA",
+                        }}
+                      >
+                        <AlertTriangle size={12} color="#DC2626" />
+                        <span style={{ fontFamily: "var(--font-inter)", fontSize: 11, color: "#DC2626", fontWeight: 600 }}>
+                          AI mendeteksi {item.annotations.length} masalah
+                        </span>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
 
   const { data, error } = await supabaseAdmin
     .from("laporan")
-    .select("id, reporter_name, lokasi, kategori, deskripsi, urgency, status, foto_url, created_at")
+    .select("id, reporter_name, lokasi, kategori, deskripsi, urgency, status, foto_url, annotations, created_at")
     .ilike("reporter_name", name.trim())
     .order("created_at", { ascending: false });
 

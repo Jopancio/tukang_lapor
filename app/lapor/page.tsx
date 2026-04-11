@@ -16,6 +16,7 @@ import {
   X,
   ImageIcon,
   ScanSearch,
+  ShieldCheck,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
@@ -106,6 +107,7 @@ export default function LaporPage() {
   const [detections, setDetections] = useState<Detection[]>([]);
   const [analyzing, setAnalyzing] = useState(false);
   const [analysisDone, setAnalysisDone] = useState(false);
+  const [showCleanPopup, setShowCleanPopup] = useState(false);
 
   function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -171,6 +173,13 @@ export default function LaporPage() {
             });
             if (annotateRes.ok) {
               const annotateJson = await annotateRes.json();
+              if (annotateJson.is_clean) {
+                setShowCleanPopup(true);
+                setAnalysisDone(true);
+                setAnalyzing(false);
+                setLoading(false);
+                return;
+              }
               photoAnnotations = annotateJson.detections ?? [];
               setDetections(photoAnnotations ?? []);
               setAnalysisDone(true);
@@ -420,7 +429,7 @@ export default function LaporPage() {
                 color: "#15803D",
               }}
             >
-              Laporan Publik — Tanpa Login
+              Laporankan   Sekarang!
             </span>
           </div>
           <h1
@@ -444,7 +453,7 @@ export default function LaporPage() {
               margin: 0,
             }}
           >
-            Temukan masalah di sekolah? Laporkan sekarang — tanpa perlu akun. Tim prakarya akan
+            Temukan masalah di sekolah? Laporkan sekarang — Tim prakarya akan
             segera menindaklanjuti.
           </p>
         </div>
@@ -678,7 +687,7 @@ export default function LaporPage() {
                           color: "#FFFFFF",
                         }}
                       >
-                        AI sedang mendeteksi sampah...
+                        AI sedang menganalisis gambar...
                       </span>
                     </div>
                   )}
@@ -854,6 +863,118 @@ export default function LaporPage() {
           </p>
         </form>
       </main>
+
+      {/* Clean image rejection popup */}
+      {showCleanPopup && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 9999,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            background: "rgba(0,0,0,0.5)",
+            padding: 16,
+          }}
+        >
+          <div
+            style={{
+              background: "#FFFFFF",
+              borderRadius: 20,
+              padding: "32px 28px",
+              maxWidth: 400,
+              width: "100%",
+              boxShadow: "0 12px 48px rgba(0,0,0,0.18)",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: 16,
+              textAlign: "center",
+            }}
+          >
+            <div
+              style={{
+                width: 64,
+                height: 64,
+                borderRadius: "50%",
+                background: "#F0FDF4",
+                border: "2px solid #BBF7D0",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <ShieldCheck size={30} color="#16A34A" />
+            </div>
+            <h3
+              style={{
+                fontFamily: "var(--font-inter, Inter, sans-serif)",
+                fontSize: 18,
+                fontWeight: 700,
+                color: "#111827",
+                margin: 0,
+              }}
+            >
+              Kondisi Terlihat Baik
+            </h3>
+            <p
+              style={{
+                fontFamily: "var(--font-inter, Inter, sans-serif)",
+                fontSize: 13,
+                color: "#6B7280",
+                margin: 0,
+                lineHeight: 1.6,
+              }}
+            >
+              AI menganalisis foto Anda dan tidak mendeteksi masalah kebersihan,
+              kerusakan, atau pemborosan energi. Area ini tampak dalam kondisi ideal.
+              Silakan ganti foto jika Anda yakin ada masalah.
+            </p>
+            <div className="flex gap-3" style={{ width: "100%", marginTop: 4 }}>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowCleanPopup(false);
+                  removePhoto();
+                }}
+                style={{
+                  flex: 1,
+                  padding: "10px 16px",
+                  borderRadius: 10,
+                  background: "#15803D",
+                  color: "#FFFFFF",
+                  fontFamily: "var(--font-inter, Inter, sans-serif)",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  border: "none",
+                  cursor: "pointer",
+                }}
+              >
+                Ganti Foto
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowCleanPopup(false)}
+                style={{
+                  flex: 1,
+                  padding: "10px 16px",
+                  borderRadius: 10,
+                  background: "#F3F4F6",
+                  color: "#374151",
+                  fontFamily: "var(--font-inter, Inter, sans-serif)",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  border: "none",
+                  cursor: "pointer",
+                }}
+              >
+                Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Footer */}
       <footer
